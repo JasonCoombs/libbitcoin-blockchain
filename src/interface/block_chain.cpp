@@ -65,7 +65,7 @@ block_chain::block_chain(threadpool& pool,
     dispatch_(pool, NAME "_dispatch"),
 
     // Organizers use priority dispatch and/or non-priority thread pool.
-    block_organizer_(validation_mutex_, priority_, pool, *this, header_pool_, settings),
+    block_organizer_(validation_mutex_, priority_, pool, *this, settings),
     header_organizer_(validation_mutex_, priority_, pool, *this, header_pool_, settings, bitcoin_settings),
     transaction_organizer_(validation_mutex_, priority_, pool, *this, transaction_pool_, settings),
 
@@ -249,25 +249,25 @@ bool block_chain::get_downloadable(hash_digest& out_hash, size_t height) const
 
 void block_chain::populate_header(const chain::header& header) const
 {
-    return database_.blocks().get_header_metadata(header);
+    database_.blocks().get_header_metadata(header);
 }
 
 void block_chain::populate_block_transaction(const chain::transaction& tx,
     uint32_t forks, size_t fork_height) const
 {
-    return database_.transactions().get_block_metadata(tx, forks, fork_height);
+    database_.transactions().get_block_metadata(tx, forks, fork_height);
 }
 
 void block_chain::populate_pool_transaction(const chain::transaction& tx,
     uint32_t forks) const
 {
-    return database_.transactions().get_pool_metadata(tx, forks);
+    database_.transactions().get_pool_metadata(tx, forks);
 }
 
-void block_chain::populate_output(const chain::output_point& outpoint,
+bool block_chain::populate_output(const chain::output_point& outpoint,
     size_t fork_height, bool candidate) const
 {
-    database_.transactions().get_output(outpoint, fork_height, candidate);
+    return database_.transactions().get_output(outpoint, fork_height, candidate);
 }
 
 uint8_t block_chain::get_block_state(size_t height, bool candidate) const
@@ -401,7 +401,7 @@ code block_chain::reorganize(const config::checkpoint& fork,
 
     code ec;
     auto fork_height = fork.height();
-    header_const_ptr_list_ptr outgoing;
+    const auto outgoing = std::make_shared<header_const_ptr_list>();
 
     // This unmarks candidate txs and spent outputs (may have been validated).
     if ((ec = database_.reorganize(fork, incoming, outgoing)))
@@ -678,12 +678,10 @@ bool block_chain::set_top_valid_candidate_state()
         return false;
 
     // The loop must at least terminate on the genesis block.
-    BITCOIN_ASSERT(is_valid_candidate(get_block_state(0, true)));
+    BITCOIN_ASSERT(is_valid(get_block_state(0, true)));
 
-    // Block marked candidate when validated in candidate chain.
-    // Block unmarked candidate when leaves candidate chain.
-    // Block will be valid and unmarked candidate upon reentry.
-    while (!is_valid_candidate(get_block_state(height, true)))
+    // Loop from top to genesis in the candidate index.
+    while (!is_valid(get_block_state(height, true)))
         --height;
 
     const auto state = chain_state_populator_.populate(height, false);
@@ -769,14 +767,14 @@ bool block_chain::is_reorganizable() const
 chain::chain_state::ptr block_chain::chain_state(const chain::header& header,
     size_t height) const
 {
-    return chain_state_populator_.populate(header, height, false);
+    return chain_state_populator_.populate(header, height, true);
 }
 
 // Promote chain state from the given parent header.
 chain::chain_state::ptr block_chain::promote_state(const chain::header& header,
     chain::chain_state::ptr parent) const
 {
-    if (!parent || parent->hash() !=header.previous_block_hash())
+    if (!parent || parent->hash() != header.previous_block_hash())
         return {};
 
     return std::make_shared<chain::chain_state>(*parent, header,

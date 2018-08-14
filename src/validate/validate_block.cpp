@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <bitcoin/bitcoin.hpp>
 #include <bitcoin/blockchain/interface/fast_chain.hpp>
@@ -133,6 +134,8 @@ void validate_block::handle_populated(const code& ec, block_const_ptr block,
         handler(error::success);
         return;
     }
+
+    BITCOIN_ASSERT(metadata.state);
 
     if (metadata.state->is_under_checkpoint())
     {
@@ -272,7 +275,7 @@ void validate_block::connect_inputs(block_const_ptr block, size_t bucket,
     size_t position = 0;
 
     // Must skip coinbase here as it is already accounted for.
-    for (auto tx = txs.begin() + 1; tx != txs.end(); ++tx)
+    for (auto tx = std::next(txs.begin()); tx != txs.end(); ++tx)
     {
         ++queries_;
 
