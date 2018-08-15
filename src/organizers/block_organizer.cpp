@@ -38,11 +38,11 @@ using namespace std::placeholders;
 
 block_organizer::block_organizer(prioritized_mutex& mutex,
     dispatcher& priority_dispatch, threadpool& threads, fast_chain& chain,
-    const settings& settings)
+    const settings& settings, const bc::settings& bitcoin_settings)
   : fast_chain_(chain),
     mutex_(mutex),
     stopped_(true),
-    validator_(priority_dispatch, chain, settings),
+    validator_(priority_dispatch, chain, settings, bitcoin_settings),
     downloader_subscriber_(std::make_shared<download_subscriber>(threads, NAME))
 {
 }
@@ -96,7 +96,7 @@ code block_organizer::organize(block_const_ptr block, size_t height)
     //#########################################################################
 
     // Queue download notification to invoke validation on downloader thread.
-    downloader_subscriber_->relay(error_code, block, height);
+    ////downloader_subscriber_->relay(error_code, block, height);
 
     // Validation result is returned by metadata.error.
     // Failure code implies store corruption, caller should log.

@@ -65,7 +65,8 @@ block_chain::block_chain(threadpool& pool,
     dispatch_(pool, NAME "_dispatch"),
 
     // Organizers use priority dispatch and/or non-priority thread pool.
-    block_organizer_(validation_mutex_, priority_, pool, *this, settings),
+    block_organizer_(validation_mutex_, priority_, pool, *this, settings,
+        bitcoin_settings),
     header_organizer_(validation_mutex_, priority_, pool, *this, header_pool_, settings, bitcoin_settings),
     transaction_organizer_(validation_mutex_, priority_, pool, *this, transaction_pool_, settings),
 
@@ -395,9 +396,10 @@ code block_chain::reorganize(const config::checkpoint& fork,
     if (!top_state)
         return error::operation_failed;
 
-    // Clear incoming chain state for reorganize and notify.
-    std::for_each(incoming->begin(), incoming->end(),
-        [](header_const_ptr header) { header->metadata.state.reset(); });
+    // TODO: if leave uncleared do not need header.median_time_past.
+    ////// Clear incoming chain state for reorganize and notify.
+    ////std::for_each(incoming->begin(), incoming->end(),
+    ////    [](header_const_ptr header) { header->metadata.state.reset(); });
 
     code ec;
     auto fork_height = fork.height();
@@ -423,7 +425,7 @@ code block_chain::reorganize(const config::checkpoint& fork,
         set_confirmed_work();
 
         // When fork point is lowered the top valid candidate is at fork point.
-        auto top_valid = chain_state_populator_.populate(fork_height, false);
+        auto top_valid = chain_state_populator_.populate(fork_height, true);
         set_top_valid_candidate_state(top_valid);
         set_candidate_work(0);
     }
@@ -551,8 +553,8 @@ code block_chain::reorganize(block_const_ptr_list_const_ptr branch_cache,
     // Append all candidate pointers from the branch cache.
     for (const auto block: *branch_cache)
     {
-        // Clear chain state for reorganize and notify.
-        block->header().metadata.state.reset();
+        //// Clear chain state for reorganize and notify.
+        ////block->header().metadata.state.reset();
         incoming->push_back(block);
     }
 
@@ -597,7 +599,6 @@ chain::chain_state::ptr block_chain::top_candidate_state() const
 {
     return top_candidate_state_.load();
 }
-
 
 chain::chain_state::ptr block_chain::top_valid_candidate_state() const
 {
@@ -666,7 +667,7 @@ bool block_chain::set_confirmed_work()
 // private.
 bool block_chain::set_top_candidate_state()
 {
-    set_top_candidate_state(chain_state_populator_.populate(false));
+    set_top_candidate_state(chain_state_populator_.populate(true));
     return top_candidate_state() != nullptr;
 }
 
@@ -684,7 +685,7 @@ bool block_chain::set_top_valid_candidate_state()
     while (!is_valid(get_block_state(height, true)))
         --height;
 
-    const auto state = chain_state_populator_.populate(height, false);
+    const auto state = chain_state_populator_.populate(height, true);
     set_top_valid_candidate_state(state);
     return top_valid_candidate_state() != nullptr;
 }
@@ -692,7 +693,7 @@ bool block_chain::set_top_valid_candidate_state()
 // private.
 bool block_chain::set_next_confirmed_state()
 {
-    set_next_confirmed_state(chain_state_populator_.populate(true));
+    set_next_confirmed_state(chain_state_populator_.populate(false));
     return next_confirmed_state() != nullptr;
 }
 
@@ -1684,7 +1685,7 @@ void block_chain::organize(header_const_ptr header, result_handler handler)
 void block_chain::organize(transaction_const_ptr tx, result_handler handler)
 {
     // The handler must not call organize (lock safety).
-    transaction_organizer_.organize(tx, handler);
+    transaction_organizer_.organize(tx, handler, bitcoin_settings_.max_money);
 }
 
 code block_chain::organize(block_const_ptr block, size_t height)
