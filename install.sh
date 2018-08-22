@@ -714,11 +714,11 @@ build_from_travis()
 #==============================================================================
 build_all()
 {
-if [ ! -d "$BUILD_DIR/libbitcoin" ]; then
+if [ ! -d "$BUILD_DIR/libbitcoin-blockchain" ]; then
     build_from_tarball_boost $BOOST_URL $BOOST_ARCHIVE bzip2 . $PARALLEL "$BUILD_BOOST" "${BOOST_OPTIONS[@]}"
     build_from_github libbitcoin secp256k1 version5 $PARALLEL ${SECP256K1_OPTIONS[@]} "$@"
     build_from_github JasonCoombs libbitcoin master $PARALLEL ${BITCOIN_OPTIONS[@]} "$@"
-    build_from_github libbitcoin libbitcoin-consensus master $PARALLEL ${BITCOIN_CONSENSUS_OPTIONS[@]} "$@"
+    build_from_github JasonCoombs libbitcoin-consensus master $PARALLEL ${BITCOIN_CONSENSUS_OPTIONS[@]} "$@"
     build_from_github JasonCoombs libbitcoin-database master $PARALLEL ${BITCOIN_DATABASE_OPTIONS[@]} "$@"
     build_from_travis JasonCoombs libbitcoin-blockchain master $PARALLEL ${BITCOIN_BLOCKCHAIN_OPTIONS[@]} "$@"
 else
