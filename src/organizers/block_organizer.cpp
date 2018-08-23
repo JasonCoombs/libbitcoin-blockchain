@@ -208,8 +208,16 @@ code block_organizer::validate(block_const_ptr block)
         std::bind(&block_organizer::handle_accept,
             this, _1, block, complete);
 
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << "validator_.accept @ "
+    << &block << " : "
+    << block;
+
     // Checks that are dependent upon chain state.
     validator_.accept(block, accept_handler);
+
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << "thread now waiting on resume_.get_future().get()";
 
     // Store failed or received stop code from validator.
     return resume_.get_future().get();
