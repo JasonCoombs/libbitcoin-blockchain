@@ -42,27 +42,23 @@ populate_block::populate_block(dispatcher& dispatch, const fast_chain& chain)
 void populate_block::populate(block_const_ptr block,
     result_handler&& handler) const
 {
-    // See: https://github.com/JasonCoombs/libbitcoin-blockchain/commit/820da0afff2e1951470b247edcfa2aaf73a67ab0#diff-3bd121e8d27f54c210879b53dee0449b
-    auto& header_ptr = block->header();
-    auto& metadata = header_ptr.metadata;
-    auto& block_metadata = block->metadata;
-    
     // The block class has no population method, so set timer externally.
-    block_metadata.start_populate = asio::steady_clock::now();
-    
+    block->metadata.start_populate = asio::steady_clock::now();
+
     // This candidate must be that which follows the top valid candidate.
+    auto& metadata = block->header().metadata;
     const auto top_valid = fast_chain_.top_valid_candidate_state();
-    metadata.state = fast_chain_.promote_state(header_ptr, top_valid);
-    
+    metadata.state = fast_chain_.promote_state(block->header(), top_valid);
+
     if (!metadata.state)
     {
         handler(error::operation_failed);
         return;
     }
-    
+
     // Above this confirmed are not confirmed in the candidate chain.
     const auto fork_height = fast_chain_.fork_point().height();
-    
+
     // Contextual validation is bypassed under checkpoints.
     if (metadata.state->is_under_checkpoint())
     {
@@ -70,11 +66,11 @@ void populate_block::populate(block_const_ptr block,
         populate_non_coinbase(block, fork_height, false, handler);
         return;
     }
-    
+
     // If metadata was not already populated (due to existence), do it here.
     if (!metadata.exists)
-        fast_chain_.populate_header(header_ptr);
-    
+        fast_chain_.populate_header(block->header());
+
     // Contextual validation is bypassed if already validated.
     if (metadata.validated)
     {
@@ -82,7 +78,7 @@ void populate_block::populate(block_const_ptr block,
         populate_non_coinbase(block, fork_height, false, handler);
         return;
     }
-    
+
     populate_coinbase(block, fork_height);
     populate_non_coinbase(block, fork_height, true, handler);
 }
