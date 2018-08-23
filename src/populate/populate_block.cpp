@@ -57,8 +57,7 @@ void populate_block::populate(block_const_ptr block,
     {
         LOG_VERBOSE(LOG_BLOCKCHAIN)
         << "!metadata.state @ "
-        << &header_ptr << " : "
-        << header_ptr;
+        << &header_ptr;
 
         handler(error::operation_failed);
         return;
@@ -67,8 +66,7 @@ void populate_block::populate(block_const_ptr block,
     {
         LOG_VERBOSE(LOG_BLOCKCHAIN)
         << "metadata.state @ "
-        << &header_ptr << " : "
-        << header_ptr;
+        << &header_ptr;
     }
     // Above this confirmed are not confirmed in the candidate chain.
     const auto fork_height = fast_chain_.fork_point().height();
@@ -86,8 +84,7 @@ void populate_block::populate(block_const_ptr block,
     {
         LOG_VERBOSE(LOG_BLOCKCHAIN)
         << "!metadata.exists @ "
-        << &header_ptr << " : "
-        << header_ptr;
+        << &header_ptr;
 
         fast_chain_.populate_header(header_ptr);
     }
@@ -95,8 +92,7 @@ void populate_block::populate(block_const_ptr block,
     {
         LOG_VERBOSE(LOG_BLOCKCHAIN)
         << "metadata.exists @ "
-        << &header_ptr << " : "
-        << header_ptr;
+        << &header_ptr;
     }
     
     // Contextual validation is bypassed if already validated.

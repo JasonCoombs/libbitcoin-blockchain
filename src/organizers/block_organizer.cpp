@@ -210,8 +210,7 @@ code block_organizer::validate(block_const_ptr block)
 
     LOG_VERBOSE(LOG_BLOCKCHAIN)
     << "validator_.accept @ "
-    << &block << " : "
-    << block;
+    << &block;
 
     // Checks that are dependent upon chain state.
     validator_.accept(block, accept_handler);
