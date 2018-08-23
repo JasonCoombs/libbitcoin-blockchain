@@ -63,6 +63,9 @@ bool transaction_organizer::stopped() const
 
 bool transaction_organizer::start()
 {
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << "transaction_organizer::start()";
+
     stopped_ = false;
     validator_.start();
     return true;
@@ -70,6 +73,9 @@ bool transaction_organizer::start()
 
 bool transaction_organizer::stop()
 {
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << "transaction_organizer::stop()";
+
     validator_.stop();
     stopped_ = true;
     return true;
@@ -85,6 +91,9 @@ void transaction_organizer::organize(transaction_const_ptr tx,
     result_handler handler, uint64_t max_money)
 {
     code error_code;
+
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << "transaction_organizer::organize()";
 
     // Checks that are independent of chain state.
     if ((error_code = validator_.check(tx, max_money)))
@@ -148,6 +157,9 @@ void transaction_organizer::organize(transaction_const_ptr tx,
 // private
 void transaction_organizer::signal_completion(const code& ec)
 {
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << "transaction_organizer::signal_completion()";
+
     // This must be protected so that it is properly cleared.
     // Signal completion, which results in original handler invoke with code.
     resume_.set_value(ec);
@@ -160,6 +172,9 @@ void transaction_organizer::signal_completion(const code& ec)
 void transaction_organizer::handle_accept(const code& ec,
     transaction_const_ptr tx, result_handler handler)
 {
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << "transaction_organizer::handle_accept()";
+    
     // The tx may exist in the store in any state except confirmed or verified.
     // Either state implies that the tx exists and is valid for its context.
 
@@ -201,6 +216,9 @@ void transaction_organizer::handle_accept(const code& ec,
 void transaction_organizer::handle_connect(const code& ec,
     transaction_const_ptr tx, result_handler handler)
 {
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << "transaction_organizer::handle_connect()";
+
     if (stopped())
     {
         handler(error::service_stopped);

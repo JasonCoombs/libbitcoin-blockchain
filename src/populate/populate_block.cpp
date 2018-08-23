@@ -54,7 +54,7 @@ void populate_block::populate(block_const_ptr block,
     auto& metadata = header_ptr.metadata;
     auto& block_metadata = block->metadata;
     
-    // The block class has no population method, so set timer externally.
+    // timestamp used for reporting, performance metrics, see protocol_block_in::report()
     block_metadata.start_populate = asio::steady_clock::now();
     
     // This candidate must be that which follows the top valid candidate.

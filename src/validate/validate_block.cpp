@@ -120,6 +120,10 @@ void validate_block::accept(block_const_ptr block,
 void validate_block::handle_populated(const code& ec, block_const_ptr block,
     result_handler handler) const
 {
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << "validate_block::handle_populated() with result_handler = "
+    << &handler;
+
     if (stopped())
     {
         handler(error::service_stopped);
@@ -157,12 +161,19 @@ void validate_block::handle_populated(const code& ec, block_const_ptr block,
         return;
     }
 
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << "continuing to join_handler";
+    
     const auto sigops = std::make_shared<atomic_counter>(0);
     const auto bip141 = metadata.state->is_enabled(rule_fork::bip141_rule);
 
     result_handler complete_handler =
         std::bind(&validate_block::handle_accepted,
             this, _1, block, sigops, bip141, handler);
+
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << "complete_handler = "
+    << &complete_handler;
 
     // One dedicated thread is required by the validation subscriber.
     const auto threads = priority_dispatch_.size() - 1u;
@@ -174,9 +185,17 @@ void validate_block::handle_populated(const code& ec, block_const_ptr block,
     const auto join_handler = synchronize(std::move(complete_handler), buckets,
         NAME "_accept");
 
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << "entering for loop, dispatch concurrent this join_handler = "
+    << &join_handler;
+
     for (size_t bucket = 0; bucket < buckets; ++bucket)
         priority_dispatch_.concurrent(&validate_block::accept_transactions,
             this, block, bucket, buckets, sigops, bip16, bip141, join_handler);
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << "finished for loop, dispatched concurrent this join_handler = "
+    << &join_handler;
 }
 
 // Returns validation code only.
