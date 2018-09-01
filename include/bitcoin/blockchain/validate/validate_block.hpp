@@ -40,7 +40,7 @@ public:
     typedef handle0 result_handler;
 
     validate_block(dispatcher& dispatch, const fast_chain& chain,
-        const settings& settings, const bc::settings& bitcoin_settings);
+        const settings& settings, bc::settings& bitcoin_settings);
 
     void start();
     void stop();
@@ -57,7 +57,7 @@ private:
     typedef std::atomic<size_t> atomic_counter;
     typedef std::shared_ptr<atomic_counter> atomic_counter_ptr;
 
-    static void dump(const code& ec, const chain::transaction& tx,
+    static void dump(const code& ec, chain::transaction& tx,
         uint32_t input_index, uint32_t forks, size_t height,
         bool use_libconsensus);
 
@@ -82,7 +82,7 @@ private:
     mutable atomic_counter hits_;
     mutable atomic_counter queries_;
     populate_block block_populator_;
-    const bc::settings& bitcoin_settings_;
+    bc::settings& bitcoin_settings_;
 };
 
 } // namespace blockchain

@@ -151,7 +151,7 @@ code validate_input::convert_result(verify_result_type result)
 }
 
 // TODO: cache transaction wire serialization.
-code validate_input::verify_script(const transaction& tx, uint32_t input_index,
+code validate_input::verify_script(transaction& tx, uint32_t input_index,
     uint32_t forks, bool use_libconsensus)
 {
     if (!use_libconsensus)
@@ -172,7 +172,7 @@ code validate_input::verify_script(const transaction& tx, uint32_t input_index,
 
 #else
 
-code validate_input::verify_script(const transaction& tx,
+code validate_input::verify_script(ransaction& tx,
     uint32_t input_index, uint32_t forks, bool use_libconsensus)
 {
     if (use_libconsensus)

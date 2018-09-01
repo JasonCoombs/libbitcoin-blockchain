@@ -89,19 +89,19 @@ public:
         block_fetch_handler handler) const = 0;
 
     virtual void fetch_block(const hash_digest& hash, bool witness,
-        block_fetch_handler handler) const = 0;
+        block_fetch_handler handler) ;
 
     virtual void fetch_block_header(size_t height,
         block_header_fetch_handler handler) const = 0;
 
     virtual void fetch_block_header(const hash_digest& hash,
-        block_header_fetch_handler handler) const = 0;
+        block_header_fetch_handler handler) ;
 
     virtual void fetch_merkle_block(size_t height,
-        merkle_block_fetch_handler handler) const = 0;
+        merkle_block_fetch_handler handler) ;
 
     virtual void fetch_merkle_block(const hash_digest& hash,
-        merkle_block_fetch_handler handler) const = 0;
+        merkle_block_fetch_handler handler) ;
 
     virtual void fetch_compact_block(size_t height,
         compact_block_fetch_handler handler) const = 0;

@@ -89,15 +89,15 @@ public:
         size_t height) const = 0;
 
     /// Populate metadata of the given block header.
-    virtual void populate_header(const chain::header& header) const = 0;
+    virtual void populate_header(chain::header& header) const = 0;
 
     /// Sets metadata based on fork point. 
     /// Populate metadata of the given transaction for block inclusion.
-    virtual void populate_block_transaction(const chain::transaction& tx,
+    virtual void populate_block_transaction(chain::transaction& tx,
         uint32_t forks, size_t fork_height) const = 0;
 
     /// Populate metadata of the given transaction for pool inclusion.
-    virtual void populate_pool_transaction(const chain::transaction& tx,
+    virtual void populate_pool_transaction(chain::transaction& tx,
         uint32_t forks) const = 0;
 
     /// Sets metadata based on fork point. 
@@ -133,7 +133,7 @@ public:
     virtual code update(block_const_ptr block, size_t height) = 0;
 
     /// Set the block validation state.
-    virtual code invalidate(const chain::header& header,
+    virtual code invalidate(chain::header& header,
         const code& error) = 0;
 
     /// Set the block validation state and all candidate chain ancestors.
@@ -177,11 +177,11 @@ public:
     // ------------------------------------------------------------------------
 
     /// Get chain state for the given indexed header.
-    virtual chain::chain_state::ptr chain_state(const chain::header& header,
+    virtual chain::chain_state::ptr chain_state(chain::header& header,
         size_t height) const = 0;
 
     /// Promote chain state from the given parent header.
-    virtual chain::chain_state::ptr promote_state(const chain::header& header,
+    virtual chain::chain_state::ptr promote_state(chain::header& header,
         chain::chain_state::ptr parent) const = 0;
 
     /// Promote chain state for the last header in the multi-header branch.

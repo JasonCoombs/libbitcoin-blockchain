@@ -61,7 +61,7 @@ int main(int argc, char** argv)
     }
 
     database::settings settings(config::settings::mainnet);
-    const bc::settings bitcoin_settings(config::settings::mainnet);
+    bc::settings bitcoin_settings(config::settings::mainnet);
 
     if (!data_base(settings).create(bitcoin_settings.genesis_block))
     {

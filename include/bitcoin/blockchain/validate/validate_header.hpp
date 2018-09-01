@@ -36,7 +36,7 @@ public:
     typedef handle0 result_handler;
 
     validate_header(dispatcher& dispatch, const fast_chain& chain,
-        const settings& settings, const bc::settings& bitcoin_settings);
+        const settings& settings, bc::settings& bitcoin_settings);
 
     void start();
     void stop();
@@ -55,7 +55,7 @@ private:
     std::atomic<bool> stopped_;
     const bool retarget_;
     populate_header header_populator_;
-    const bc::settings& bitcoin_settings_;
+    bc::settings& bitcoin_settings_;
 };
 
 } // namespace blockchain

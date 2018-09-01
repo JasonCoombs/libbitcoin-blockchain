@@ -38,7 +38,7 @@ using namespace std::placeholders;
 
 block_organizer::block_organizer(prioritized_mutex& mutex,
     dispatcher& priority_dispatch, threadpool& threads, fast_chain& chain,
-    const settings& settings, const bc::settings& bitcoin_settings)
+    const settings& settings, bc::settings& bitcoin_settings)
   : fast_chain_(chain),
     mutex_(mutex),
     stopped_(true),
@@ -86,6 +86,13 @@ bool block_organizer::stop()
 
 code block_organizer::organize(block_const_ptr block, size_t height)
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_organizer::validate() height " << height
+    << " from block @ "
+    << &block;
+
     // Checks that are independent of chain state (header, block, txs).
     validator_.check(block, height);
 
@@ -112,6 +119,8 @@ code block_organizer::organize(block_const_ptr block, size_t height)
 bool block_organizer::handle_check(const code& ec, block_const_ptr block,
     size_t height)
 {
+     auto this_id = boost::this_thread::get_id();
+
     if (ec)
         return false;
 
@@ -138,6 +147,10 @@ bool block_organizer::handle_check(const code& ec, block_const_ptr block,
         if ((error_code = validate(block)))
             break;
 
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " thread on resume_.get_future().get() done waiting: ec == 0";
+
         if (block->header().metadata.error)
         {
             // Pop and mark as invalid candidates at and above block.
@@ -162,12 +175,20 @@ bool block_organizer::handle_check(const code& ec, block_const_ptr block,
 
         if (fast_chain_.is_reorganizable())
         {
+            /*
+             no known conversion from
+             'std::__1::shared_ptr<std::__1::vector<std::__1::shared_ptr<libbitcoin::message::block>, std::__1::allocator<std::__1::shared_ptr<libbitcoin::message::block> > > >'
+             to
+             'block_ptr_list *' (aka 'vector<shared_ptr<libbitcoin::message::block> > *')
+             for 1st argument virtual code reorganize(block_ptr_list *branch_cache,
+             */
+
             // Reorganize this stronger candidate branch into confirmed chain.
             //#################################################################
             error_code = fast_chain_.reorganize(branch_cache, height);
             //#################################################################
             branch_cache->clear();
-
+            
             if (error_code)
                 break;
         }
@@ -177,6 +198,9 @@ bool block_organizer::handle_check(const code& ec, block_const_ptr block,
         // TODO: consider metadata population in line with block read.
         block = fast_chain_.get_block(++current_height, true, true);
     }
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " thread on resume_.get_future().get() done waiting: ec != 0 or else while loop completed.";
 
     mutex_.unlock_high_priority();
     ///////////////////////////////////////////////////////////////////////////
@@ -198,6 +222,12 @@ bool block_organizer::handle_check(const code& ec, block_const_ptr block,
 // Convert validate.accept/connect to a sequential call.
 code block_organizer::validate(block_const_ptr block)
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_organizer::validate() block @ "
+    << &block;
+
     resume_ = std::promise<code>();
 
     const result_handler complete =
@@ -209,14 +239,16 @@ code block_organizer::validate(block_const_ptr block)
             this, _1, block, complete);
 
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "validator_.accept @ "
-    << &block;
+    << this_id
+    << " validator_.accept @ "
+    << &accept_handler;
 
     // Checks that are dependent upon chain state.
     validator_.accept(block, accept_handler);
 
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "thread now waiting on resume_.get_future().get()";
+    << this_id
+    << " thread now waiting on resume_.get_future().get()";
 
     // Store failed or received stop code from validator.
     return resume_.get_future().get();
@@ -225,6 +257,11 @@ code block_organizer::validate(block_const_ptr block)
 // private
 void block_organizer::signal_completion(const code& ec)
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_organizer::signal_completion()";
+
     resume_.set_value(ec);
 }
 
@@ -235,6 +272,11 @@ void block_organizer::signal_completion(const code& ec)
 void block_organizer::handle_accept(const code& ec, block_const_ptr block,
     result_handler handler)
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_organizer::handle_accept()";
+
     if (stopped())
     {
         handler(error::service_stopped);
@@ -251,6 +293,10 @@ void block_organizer::handle_accept(const code& ec, block_const_ptr block,
         std::bind(&block_organizer::handle_connect,
             this, _1, block, handler);
 
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_organizer::handle_accept() calling validator_.connect()";
+
     // Checks that include script metadata.
     validator_.connect(block, connect_handler);
 }
@@ -259,6 +305,11 @@ void block_organizer::handle_accept(const code& ec, block_const_ptr block,
 void block_organizer::handle_connect(const code& ec, block_const_ptr,
     result_handler handler)
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_organizer::handle_connect()";
+
     if (stopped())
     {
         handler(error::service_stopped);
@@ -270,6 +321,10 @@ void block_organizer::handle_connect(const code& ec, block_const_ptr,
         handler(ec);
         return;
     }
+
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_organizer::handle_connect() calling handler()";
 
     handler(error::success);
 }

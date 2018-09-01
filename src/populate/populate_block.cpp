@@ -42,13 +42,21 @@ populate_block::populate_block(dispatcher& dispatch, const fast_chain& chain)
 void populate_block::populate(block_const_ptr block,
     result_handler&& handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "block @ "
-    << block;
+    << this_id
+    << " RVALUE result_handler&& handler in populate_block.cpp = "
+    << &handler;
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block @ "
+    << &block;
 
     auto& header_ptr = block->header();
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "&header_ptr @ "
+    << this_id
+    << " &header_ptr @ "
     << &header_ptr;
 
     auto& metadata = header_ptr.metadata;
@@ -64,7 +72,8 @@ void populate_block::populate(block_const_ptr block,
     if (!metadata.state)
     {
         LOG_VERBOSE(LOG_BLOCKCHAIN)
-        << "!metadata.state @ "
+        << this_id
+        << " !metadata.state @ "
         << &metadata.state;
 
         handler(error::operation_failed);
@@ -73,7 +82,8 @@ void populate_block::populate(block_const_ptr block,
     else
     {
         LOG_VERBOSE(LOG_BLOCKCHAIN)
-        << "metadata.state @ "
+        << this_id
+        << " metadata.state @ "
         << &metadata.state;
     }
     // Above this confirmed are not confirmed in the candidate chain.
@@ -91,7 +101,8 @@ void populate_block::populate(block_const_ptr block,
     if (!metadata.exists)
     {
         LOG_VERBOSE(LOG_BLOCKCHAIN)
-        << "!metadata.exists @ "
+        << this_id
+        << " !metadata.exists @ "
         << &metadata.exists;
 
         fast_chain_.populate_header(header_ptr);
@@ -99,7 +110,8 @@ void populate_block::populate(block_const_ptr block,
     else
     {
         LOG_VERBOSE(LOG_BLOCKCHAIN)
-        << "metadata.exists @ "
+        << this_id
+        << " metadata.exists @ "
         << &metadata.exists;
     }
     
@@ -118,6 +130,14 @@ void populate_block::populate(block_const_ptr block,
 void populate_block::populate_non_coinbase(block_const_ptr block,
     size_t fork_height, bool use_txs, result_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " populate_non_coinbase block @ "
+    << &block
+    << " handler = "
+    << &handler;
+
     const auto non_coinbase_inputs = block->total_non_coinbase_inputs();
 
     if (non_coinbase_inputs == 0)
@@ -139,10 +159,16 @@ void populate_block::populate_non_coinbase(block_const_ptr block,
 void populate_block::populate_coinbase(block_const_ptr block,
     size_t fork_height) const
 {
-    const auto& txs = block->transactions();
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " populate_coinbase block @ "
+    << &block;
+
+    auto& txs = block->transactions();
     BITCOIN_ASSERT(!txs.empty());
 
-    const auto& tx = txs.front();
+    auto& tx = txs.front();
     BITCOIN_ASSERT(tx.is_coinbase());
 
     // A coinbase tx guarantees exactly one input.
@@ -169,8 +195,16 @@ void populate_block::populate_transactions(block_const_ptr block,
     size_t fork_height, size_t bucket, size_t buckets, bool use_txs,
     result_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block @ "
+    << &block
+    << " handler = "
+    << &handler;
+
     BITCOIN_ASSERT(bucket < buckets);
-    const auto& txs = block->transactions();
+    auto& txs = block->transactions();
     const auto state = block->header().metadata.state;
     const auto forks = state->enabled_forks();
     size_t input_position = 0;
@@ -181,7 +215,7 @@ void populate_block::populate_transactions(block_const_ptr block,
         for (auto position = (bucket == 0 ? buckets : bucket);
             position < txs.size(); position = ceiling_add(position, buckets))
         {
-            const auto& tx = txs[position];
+            auto& tx = txs[position];
             fast_chain_.populate_block_transaction(tx, forks, fork_height);
         }
     }

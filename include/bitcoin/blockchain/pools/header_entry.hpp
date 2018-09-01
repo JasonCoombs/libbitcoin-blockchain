@@ -71,7 +71,7 @@ private:
     // These are non-const to allow for default copy construction.
     size_t height_;
     hash_digest hash_;
-    header_const_ptr header_;
+    header_ptr header_;
 
     // TODO: could save some bytes here by holding the pointer in place of the
     // hash. This would allow navigation to the hash saving 24 bytes per child.

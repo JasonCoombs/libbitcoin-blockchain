@@ -55,6 +55,11 @@ transaction_organizer::transaction_organizer(prioritized_mutex& mutex,
 
 bool transaction_organizer::stopped() const
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " transaction_organizer::stopped()";
+
     return stopped_;
 }
 
@@ -63,8 +68,10 @@ bool transaction_organizer::stopped() const
 
 bool transaction_organizer::start()
 {
+    const auto this_id = boost::this_thread::get_id();
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "transaction_organizer::start()";
+    << this_id
+    << " transaction_organizer::start()";
 
     stopped_ = false;
     validator_.start();
@@ -73,8 +80,10 @@ bool transaction_organizer::start()
 
 bool transaction_organizer::stop()
 {
+    const auto this_id = boost::this_thread::get_id();
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "transaction_organizer::stop()";
+    << this_id
+    << " transaction_organizer::stop()";
 
     validator_.stop();
     stopped_ = true;
@@ -92,8 +101,10 @@ void transaction_organizer::organize(transaction_const_ptr tx,
 {
     code error_code;
 
+    const auto this_id = boost::this_thread::get_id();
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "transaction_organizer::organize()";
+    << this_id
+    << " transaction_organizer::organize()";
 
     // Checks that are independent of chain state.
     if ((error_code = validator_.check(tx, max_money)))
@@ -157,8 +168,10 @@ void transaction_organizer::organize(transaction_const_ptr tx,
 // private
 void transaction_organizer::signal_completion(const code& ec)
 {
+    const auto this_id = boost::this_thread::get_id();
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "transaction_organizer::signal_completion()";
+    << this_id
+    << " transaction_organizer::signal_completion()";
 
     // This must be protected so that it is properly cleared.
     // Signal completion, which results in original handler invoke with code.
@@ -172,8 +185,10 @@ void transaction_organizer::signal_completion(const code& ec)
 void transaction_organizer::handle_accept(const code& ec,
     transaction_const_ptr tx, result_handler handler)
 {
+    const auto this_id = boost::this_thread::get_id();
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "transaction_organizer::handle_accept()";
+    << this_id
+    << " transaction_organizer::handle_accept()";
     
     // The tx may exist in the store in any state except confirmed or verified.
     // Either state implies that the tx exists and is valid for its context.
@@ -216,8 +231,10 @@ void transaction_organizer::handle_accept(const code& ec,
 void transaction_organizer::handle_connect(const code& ec,
     transaction_const_ptr tx, result_handler handler)
 {
+    const auto this_id = boost::this_thread::get_id();
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "transaction_organizer::handle_connect()";
+    << this_id
+    << " transaction_organizer::handle_connect()";
 
     if (stopped())
     {

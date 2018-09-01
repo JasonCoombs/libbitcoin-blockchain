@@ -45,7 +45,7 @@ void populate_header::populate(header_branch::ptr branch,
         return;
     }
 
-    const auto& header = *branch->top();
+    auto& header = *branch->top();
     fast_chain_.populate_header(header);
 
     // TODO: ensure there is no need to set header state or index here.
@@ -67,7 +67,7 @@ void populate_header::populate(header_branch::ptr branch,
 bool populate_header::set_branch_state(header_branch::ptr branch) const
 {
     BITCOIN_ASSERT(!branch->empty());
-    const auto branch_top = branch->top();
+    auto branch_top = branch->top();
     auto& metadata = branch_top->metadata;
     metadata.state = fast_chain_.promote_state(branch);
 

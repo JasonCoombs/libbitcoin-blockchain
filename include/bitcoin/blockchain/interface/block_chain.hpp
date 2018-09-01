@@ -58,7 +58,7 @@ public:
     /// in-memory cache of tx pool metadata, as the costly query will go away.
     block_chain(threadpool& pool, const blockchain::settings& settings,
         const database::settings& database_settings,
-        const bc::settings& bitcoin_settings);
+        bc::settings& bitcoin_settings);
 
     /// The database is closed on destruct, threads must be joined.
     ~block_chain();
@@ -116,14 +116,14 @@ public:
     bool get_downloadable(hash_digest& out_hash, size_t height) const;
 
     /// Populate metadata of the given block header.
-    void populate_header(const chain::header& header) const;
+    void populate_header( chain::header& header) const;
 
     /// Populate metadata of the given transaction for block inclusion.
-    void populate_block_transaction(const chain::transaction& tx,
+    void populate_block_transaction( chain::transaction& tx,
         uint32_t forks, size_t fork_height) const;
 
     /// Populate metadata of the given transaction for pool inclusion.
-    void populate_pool_transaction(const chain::transaction& tx,
+    void populate_pool_transaction( chain::transaction& tx,
         uint32_t forks) const;
 
     /// Get the output that is referenced by the outpoint.
@@ -158,7 +158,7 @@ public:
     code update(block_const_ptr block, size_t height);
 
     /// Set the block validation state.
-    code invalidate(const chain::header& header, const code& error);
+    code invalidate( chain::header& header, const code& error);
 
     /// Set the block validation state and all candidate chain ancestors.
     code invalidate(block_const_ptr block, size_t height);
@@ -201,11 +201,11 @@ public:
     // ------------------------------------------------------------------------
 
     /// Get chain state for the given indexed header.
-    chain::chain_state::ptr chain_state(const chain::header& header,
+    chain::chain_state::ptr chain_state( chain::header& header,
         size_t height) const;
 
     /// Promote chain state from the given parent header.
-    chain::chain_state::ptr promote_state(const chain::header& header,
+    chain::chain_state::ptr promote_state( chain::header& header,
         chain::chain_state::ptr parent) const;
 
     /// Promote chain state for the last header in the multi-header branch.
@@ -239,7 +239,7 @@ public:
 
     /// fetch a block by hash.
     void fetch_block(const hash_digest& hash, bool witness,
-        block_fetch_handler handler) const;
+        block_fetch_handler handler) ;
 
     /// fetch block header by height.
     void fetch_block_header(size_t height,
@@ -247,15 +247,15 @@ public:
 
     /// fetch block header by hash.
     void fetch_block_header(const hash_digest& hash,
-        block_header_fetch_handler handler) const;
+        block_header_fetch_handler handler) ;
 
     /// fetch hashes of transactions for a block, by block height.
     void fetch_merkle_block(size_t height,
-        merkle_block_fetch_handler handler) const;
+        merkle_block_fetch_handler handler) ;
 
     /// fetch hashes of transactions for a block, by block hash.
     void fetch_merkle_block(const hash_digest& hash,
-        merkle_block_fetch_handler handler) const;
+        merkle_block_fetch_handler handler) ;
 
     /// fetch compact block by block height.
     void fetch_compact_block(size_t height,
@@ -292,7 +292,7 @@ public:
 
     /////// fetch an inventory locator relative to the current top and threshold.
     ////void fetch_block_locator(const chain::block::indexes& heights,
-    ////    block_locator_fetch_handler handler) const;
+    ////    block_locator_fetch_handler handler) ;
 
     /// fetch a header locator relative to the current top and threshold.
     void fetch_header_locator(const chain::block::indexes& heights,
@@ -421,7 +421,7 @@ private:
     bc::atomic<chain::chain_state::ptr> next_confirmed_state_;
 
     const settings& settings_;
-    const bc::settings& bitcoin_settings_;
+    bc::settings& bitcoin_settings_;
     const populate_chain_state chain_state_populator_;
     const bool index_addresses_;
 

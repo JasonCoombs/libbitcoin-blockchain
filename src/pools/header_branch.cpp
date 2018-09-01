@@ -32,7 +32,7 @@ namespace blockchain {
 using namespace bc::config;
 
 header_branch::header_branch(size_t height)
-  : height_(height),
+    : height_(height),
     headers_(std::make_shared<header_const_ptr_list>())
 {
 }

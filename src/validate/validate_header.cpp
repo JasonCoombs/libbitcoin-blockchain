@@ -36,7 +36,7 @@ using namespace std::placeholders;
 #define NAME "validate_header"
 
 validate_header::validate_header(dispatcher& dispatch, const fast_chain& chain,
-    const settings& settings, const bc::settings& bitcoin_settings)
+    const settings& settings, bc::settings& bitcoin_settings)
   : stopped_(true),
     retarget_(settings.retarget),
     header_populator_(dispatch, chain),

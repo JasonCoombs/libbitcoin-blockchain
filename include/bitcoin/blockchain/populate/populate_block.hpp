@@ -36,7 +36,7 @@ class BCB_API populate_block
 public:
     populate_block(dispatcher& dispatch, const fast_chain& chain);
 
-    /// Populate validation state for the the next block.
+    /// Populate validation state for the next block.
     void populate(block_const_ptr block, result_handler&& handler) const;
 
 protected:

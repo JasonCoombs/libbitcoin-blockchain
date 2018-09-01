@@ -35,7 +35,7 @@ class BCB_API populate_chain_state
 {
 public:
     populate_chain_state(const fast_chain& chain, const settings& settings,
-        const bc::settings& bitcoin_settings);
+        bc::settings& bitcoin_settings);
 
     /// Populate chain state for candidate or confirmed top block|header.
     chain::chain_state::ptr populate(bool candidate) const;
@@ -45,7 +45,7 @@ public:
         bool candidate) const;
 
     /// Populate chain state for the given block|header.
-    chain::chain_state::ptr populate(const chain::header& header,
+    chain::chain_state::ptr populate(chain::header& header,
         size_t header_height, bool candidate) const;
 
 private:
@@ -53,34 +53,34 @@ private:
     typedef chain::chain_state::map map;
     typedef chain::chain_state::data data;
 
-    bool get_bits(uint32_t& bits, size_t height, const header& header,
+    bool get_bits(uint32_t& bits, size_t height,  header& header,
         size_t header_height, bool candidate) const;
-    bool get_version(uint32_t& version, size_t height, const header& header,
+    bool get_version(uint32_t& version, size_t height,  header& header,
         size_t header_height, bool candidate) const;
-    bool get_timestamp(uint32_t& time, size_t height, const header& header,
+    bool get_timestamp(uint32_t& time, size_t height,  header& header,
         size_t header_height, bool candidate) const;
-    bool get_block_hash(hash_digest& hash, size_t height, const header& header,
+    bool get_block_hash(hash_digest& hash, size_t height,  header& header,
         size_t header_height, bool candidate) const;
 
-    bool populate_all(data& data, const header& header, size_t header_height,
+    bool populate_all(data& data, header& header, size_t header_height,
         bool candidate) const;
 
-    bool populate_bits(data& data, const map& map, const header& header,
+    bool populate_bits(data& data, const map& map,  header& header,
         size_t header_height, bool candidate) const;
-    bool populate_versions(data& data, const map& map, const header& header,
+    bool populate_versions(data& data, const map& map,  header& header,
         size_t header_height, bool candidate) const;
-    bool populate_timestamps(data& data, const map& map, const header& header,
+    bool populate_timestamps(data& data, const map& map,  header& header,
         size_t header_height, bool candidate) const;
-    bool populate_bip9_bit0(data& data, const map& map, const header& header,
+    bool populate_bip9_bit0(data& data, const map& map,  header& header,
         size_t header_height, bool candidate) const;
-    bool populate_bip9_bit1(data& data, const map& map, const header& header,
+    bool populate_bip9_bit1(data& data, const map& map,  header& header,
         size_t header_height, bool candidate) const;
 
     // These are thread safe.
     const uint32_t forks_;
     const uint32_t stale_seconds_;
     const config::checkpoint::list checkpoints_;
-    const bc::settings& bitcoin_settings_;
+    bc::settings& bitcoin_settings_;
 
     // This is used in a thread safe manner, as headers are never changed.
     const fast_chain& fast_chain_;

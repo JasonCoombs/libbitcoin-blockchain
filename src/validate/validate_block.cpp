@@ -39,7 +39,7 @@ using namespace std::placeholders;
 #define NAME "validate_block"
 
 validate_block::validate_block(dispatcher& dispatch, const fast_chain& chain,
-    const settings& settings, const bc::settings& bitcoin_settings)
+    const settings& settings, bc::settings& bitcoin_settings)
   : stopped_(true),
     retarget_(settings.retarget),
     use_libconsensus_(settings.use_libconsensus),
@@ -55,6 +55,11 @@ validate_block::validate_block(dispatcher& dispatch, const fast_chain& chain,
 
 bool validate_block::stopped() const
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " if validate_block::stopped()";
+
     return stopped_;
 }
 
@@ -63,11 +68,21 @@ bool validate_block::stopped() const
 
 void validate_block::start()
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " validate_block::start()";
+
     stopped_ = false;
 }
 
 void validate_block::stop()
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " validate_block::stop()";
+
     stopped_ = true;
 }
 
@@ -77,6 +92,16 @@ void validate_block::stop()
 
 void validate_block::check(block_const_ptr block, size_t height) const
 {
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << "validate_block::check this = " << this;
+    
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " validate_block::check() height " << height
+    << " from block @ "
+    << &block;
+
     auto& metadata = block->header().metadata;
 
     if (!config::checkpoint::validate(block->hash(), height, checkpoints_))
@@ -110,6 +135,12 @@ void validate_block::check(block_const_ptr block, size_t height) const
 void validate_block::accept(block_const_ptr block,
     result_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " validate_block::accept() handler = "
+    << &handler;
+
     // Returns store code only.
     block_populator_.populate(block,
         std::bind(&validate_block::handle_populated,
@@ -120,8 +151,10 @@ void validate_block::accept(block_const_ptr block,
 void validate_block::handle_populated(const code& ec, block_const_ptr block,
     result_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "validate_block::handle_populated() with result_handler = "
+    << this_id
+    << " validate_block::handle_populated() with result_handler = "
     << &handler;
 
     if (stopped())
@@ -162,7 +195,8 @@ void validate_block::handle_populated(const code& ec, block_const_ptr block,
     }
 
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "continuing to join_handler";
+    << this_id
+    << " continuing to join_handler";
     
     const auto sigops = std::make_shared<atomic_counter>(0);
     const auto bip141 = metadata.state->is_enabled(rule_fork::bip141_rule);
@@ -172,7 +206,8 @@ void validate_block::handle_populated(const code& ec, block_const_ptr block,
             this, _1, block, sigops, bip141, handler);
 
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "complete_handler = "
+    << this_id
+    << " complete_handler = "
     << &complete_handler;
 
     // One dedicated thread is required by the validation subscriber.
@@ -186,7 +221,8 @@ void validate_block::handle_populated(const code& ec, block_const_ptr block,
         NAME "_accept");
 
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "entering for loop, dispatch concurrent this join_handler = "
+    << this_id
+    << " entering for loop, dispatch concurrent this join_handler = "
     << &join_handler;
 
     for (size_t bucket = 0; bucket < buckets; ++bucket)
@@ -194,7 +230,8 @@ void validate_block::handle_populated(const code& ec, block_const_ptr block,
             this, block, bucket, buckets, sigops, bip16, bip141, join_handler);
     
     LOG_VERBOSE(LOG_BLOCKCHAIN)
-    << "finished for loop, dispatched concurrent this join_handler = "
+    << this_id
+    << " finished for loop, dispatched concurrent this join_handler = "
     << &join_handler;
 }
 
@@ -203,17 +240,23 @@ void validate_block::accept_transactions(block_const_ptr block, size_t bucket,
     size_t buckets, atomic_counter_ptr sigops, bool bip16, bool bip141,
     result_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " validate_block::accept_transactions() handler = "
+    << &handler;
+
     code ec;
     const auto& state = *block->header().metadata.state;
-    const auto& txs = block->transactions();
+    auto& txs = block->transactions();
     const auto count = txs.size();
 
     // Run contextual tx non-script checks (not in tx order).
     for (auto tx = bucket; tx < count && !ec; tx = ceiling_add(tx, buckets))
     {
-        const auto& transaction = txs[tx];
-        ec = transaction.accept(state, false);
-        *sigops += transaction.signature_operations(bip16, bip141);
+        auto& otransaction = txs[tx];
+        ec = otransaction.accept(state, false);
+        *sigops += otransaction.signature_operations(bip16, bip141);
     }
 
     handler(ec);
@@ -223,6 +266,12 @@ void validate_block::accept_transactions(block_const_ptr block, size_t bucket,
 void validate_block::handle_accepted(const code& ec, block_const_ptr block,
     atomic_counter_ptr sigops, bool bip141, result_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " validate_block::handle_accepted() handler = "
+    << &handler;
+
     if (ec)
     {
         block->header().metadata.error = ec;
@@ -244,6 +293,12 @@ void validate_block::handle_accepted(const code& ec, block_const_ptr block,
 void validate_block::connect(block_const_ptr block,
     result_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " validate_block::connect() handler = "
+    << &handler;
+
     // We are reimplementing connect, so must set timer externally.
     block->metadata.start_connect = asio::steady_clock::now();
 
@@ -290,12 +345,18 @@ void validate_block::connect(block_const_ptr block,
 void validate_block::connect_inputs(block_const_ptr block, size_t bucket,
     size_t buckets, result_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " validate_block::connect_inputs() handler = "
+    << &handler;
+
     BITCOIN_ASSERT(bucket < buckets);
 
     code ec(error::success);
     const auto state = block->header().metadata.state;
     const auto forks = state->enabled_forks();
-    const auto& txs = block->transactions();
+    auto& txs = block->transactions();
     size_t position = 0;
 
     // Must skip coinbase here as it is already accounted for.
@@ -363,6 +424,12 @@ float validate_block::hit_rate() const
 void validate_block::handle_connected(const code& ec, block_const_ptr block,
     result_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " validate_block::handle_connected() handler = "
+    << &handler;
+
     block->metadata.cache_efficiency = hit_rate();
     handler(ec);
 }
@@ -370,7 +437,7 @@ void validate_block::handle_connected(const code& ec, block_const_ptr block,
 // Utility.
 //-----------------------------------------------------------------------------
 
-void validate_block::dump(const code& ec, const transaction& tx,
+void validate_block::dump(const code& ec, transaction& tx,
     uint32_t input_index, uint32_t forks, size_t height, bool use_libconsensus)
 {
     const auto& prevout = tx.inputs()[input_index].previous_output();
