@@ -39,7 +39,7 @@ using namespace std::placeholders;
 #define NAME "validate_block"
 
 validate_block::validate_block(dispatcher& dispatch, const fast_chain& chain,
-    const settings& settings, const bc::settings& bitcoin_settings)
+    const settings& settings,  bc::settings& bitcoin_settings)
   : stopped_(true),
     use_libconsensus_(settings.use_libconsensus),
     checkpoints_(settings.checkpoints),
@@ -184,13 +184,13 @@ void validate_block::accept_transactions(block_const_ptr block, size_t bucket,
 {
     code ec;
     const auto& state = *block->header().metadata.state;
-    const auto& txs = block->transactions();
+     auto& txs = block->transactions();
     const auto count = txs.size();
 
     // Run contextual tx non-script checks (not in tx order).
     for (auto tx = bucket; tx < count && !ec; tx = ceiling_add(tx, buckets))
     {
-        const auto& transaction = txs[tx];
+         auto& transaction = txs[tx];
         ec = transaction.accept(state, false);
         *sigops += transaction.signature_operations(bip16, bip141);
     }
@@ -275,7 +275,7 @@ void validate_block::connect_inputs(block_const_ptr block, size_t bucket,
     code ec(error::success);
     const auto state = block->header().metadata.state;
     const auto forks = state->enabled_forks();
-    const auto& txs = block->transactions();
+     auto& txs = block->transactions();
     size_t position = 0;
 
     // Must skip coinbase here as it is already accounted for.
@@ -350,7 +350,7 @@ void validate_block::handle_connected(const code& ec, block_const_ptr block,
 // Utility.
 //-----------------------------------------------------------------------------
 
-void validate_block::dump(const code& ec, const transaction& tx,
+void validate_block::dump(const code& ec,  transaction& tx,
     uint32_t input_index, uint32_t forks, size_t height, bool use_libconsensus)
 {
     const auto& prevout = tx.inputs()[input_index].previous_output();

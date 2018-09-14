@@ -48,6 +48,11 @@ transaction_organizer::transaction_organizer(prioritized_mutex& mutex,
     pool_(pool),
     validator_(priority_dispatch, fast_chain_, settings)
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " transaction_organizer(prioritized_mutex& mutex): "
+    << &mutex;
 }
 
 // Properties.

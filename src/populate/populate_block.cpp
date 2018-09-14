@@ -107,10 +107,10 @@ void populate_block::populate_non_coinbase(block_const_ptr block,
 void populate_block::populate_coinbase(block_const_ptr block,
     size_t fork_height) const
 {
-    const auto& txs = block->transactions();
+     auto& txs = block->transactions();
     BITCOIN_ASSERT(!txs.empty());
 
-    const auto& tx = txs.front();
+     auto& tx = txs.front();
     BITCOIN_ASSERT(tx.is_coinbase());
 
     // A coinbase tx guarantees exactly one input.
@@ -138,7 +138,7 @@ void populate_block::populate_transactions(block_const_ptr block,
     result_handler handler) const
 {
     BITCOIN_ASSERT(bucket < buckets);
-    const auto& txs = block->transactions();
+     auto& txs = block->transactions();
     const auto state = block->header().metadata.state;
     const auto forks = state->enabled_forks();
     size_t input_position = 0;
@@ -149,7 +149,7 @@ void populate_block::populate_transactions(block_const_ptr block,
         for (auto position = (bucket == 0 ? buckets : bucket);
             position < txs.size(); position = ceiling_add(position, buckets))
         {
-            const auto& tx = txs[position];
+             auto& tx = txs[position];
             fast_chain_.populate_block_transaction(tx, forks, fork_height);
         }
     }

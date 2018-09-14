@@ -39,7 +39,7 @@ static constexpr uint32_t hour_seconds = 3600u;
 // Database access is limited to { top, hash, bits, version, timestamp }.
 
 populate_chain_state::populate_chain_state(const fast_chain& chain,
-    const settings& settings, const bc::settings& bitcoin_settings)
+    const settings& settings,  bc::settings& bitcoin_settings)
   : forks_(settings.enabled_forks()),
     stale_seconds_(settings.notify_limit_hours * hour_seconds),
     checkpoints_(config::checkpoint::sort(settings.checkpoints)),
@@ -49,7 +49,7 @@ populate_chain_state::populate_chain_state(const fast_chain& chain,
 }
 
 bool populate_chain_state::get_bits(uint32_t& bits, size_t height,
-    const header& header, size_t header_height, bool candidate) const
+     header& header, size_t header_height, bool candidate) const
 {
     if (height == header_height)
     {
@@ -61,7 +61,7 @@ bool populate_chain_state::get_bits(uint32_t& bits, size_t height,
 }
 
 bool populate_chain_state::get_version(uint32_t& version, size_t height,
-    const header& header, size_t header_height, bool candidate) const
+     header& header, size_t header_height, bool candidate) const
 {
     if (height == header_height)
     {
@@ -73,7 +73,7 @@ bool populate_chain_state::get_version(uint32_t& version, size_t height,
 }
 
 bool populate_chain_state::get_timestamp(uint32_t& time, size_t height,
-    const header& header, size_t header_height, bool candidate) const
+     header& header, size_t header_height, bool candidate) const
 {
     if (height == header_height)
     {
@@ -85,7 +85,7 @@ bool populate_chain_state::get_timestamp(uint32_t& time, size_t height,
 }
 
 bool populate_chain_state::get_block_hash(hash_digest& hash, size_t height,
-    const header& header, size_t header_height, bool candidate) const
+     header& header, size_t header_height, bool candidate) const
 {
     if (height == header_height)
     {
@@ -97,7 +97,7 @@ bool populate_chain_state::get_block_hash(hash_digest& hash, size_t height,
 }
 
 bool populate_chain_state::populate_bits(chain_state::data& data,
-    const chain_state::map& map, const header& header, size_t header_height,
+    const chain_state::map& map,  header& header, size_t header_height,
     bool confirmed) const
 {
     auto& bits = data.bits.ordered;
@@ -114,7 +114,7 @@ bool populate_chain_state::populate_bits(chain_state::data& data,
 }
 
 bool populate_chain_state::populate_versions(chain_state::data& data,
-    const chain_state::map& map, const header& header, size_t header_height,
+    const chain_state::map& map,  header& header, size_t header_height,
     bool candidate) const
 {
     auto& versions = data.version.ordered;
@@ -131,7 +131,7 @@ bool populate_chain_state::populate_versions(chain_state::data& data,
 }
 
 bool populate_chain_state::populate_timestamps(chain_state::data& data,
-    const chain_state::map& map, const header& header, size_t header_height,
+    const chain_state::map& map,  header& header, size_t header_height,
     bool candidate) const
 {
     data.timestamp.retarget = unspecified_timestamp;
@@ -157,7 +157,7 @@ bool populate_chain_state::populate_timestamps(chain_state::data& data,
 }
 
 bool populate_chain_state::populate_bip9_bit0(chain_state::data& data,
-    const chain_state::map& map, const header& header, size_t header_height,
+    const chain_state::map& map,  header& header, size_t header_height,
     bool candidate) const
 {
     if (map.bip9_bit0_height == chain_state::map::unrequested)
@@ -171,7 +171,7 @@ bool populate_chain_state::populate_bip9_bit0(chain_state::data& data,
 }
 
 bool populate_chain_state::populate_bip9_bit1(chain_state::data& data,
-    const chain_state::map& map, const header& header, size_t header_height,
+    const chain_state::map& map,  header& header, size_t header_height,
     bool candidate) const
 {
     if (map.bip9_bit1_height == chain_state::map::unrequested)
@@ -185,7 +185,7 @@ bool populate_chain_state::populate_bip9_bit1(chain_state::data& data,
 }
 
 bool populate_chain_state::populate_all(chain_state::data& data,
-    const header& header, size_t header_height, bool candidate) const
+     header& header, size_t header_height, bool candidate) const
 {
     // Construct the map to inform chain state data population.
     const auto map = chain_state::get_map(data.height, checkpoints_, forks_,
@@ -224,7 +224,7 @@ chain_state::ptr populate_chain_state::populate(size_t header_height,
 
 // Get chain state for the given block|header.
 // Only hash and height are queried from the current block/header.
-chain_state::ptr populate_chain_state::populate(const header& header,
+chain_state::ptr populate_chain_state::populate( header& header,
     size_t header_height, bool candidate) const
 {
     chain_state::data data;

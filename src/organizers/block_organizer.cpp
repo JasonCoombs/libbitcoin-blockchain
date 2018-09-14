@@ -38,13 +38,18 @@ using namespace std::placeholders;
 
 block_organizer::block_organizer(prioritized_mutex& mutex,
     dispatcher& priority_dispatch, threadpool& threads, fast_chain& chain,
-    const settings& settings, const bc::settings& bitcoin_settings)
+    const settings& settings,  bc::settings& bitcoin_settings)
   : fast_chain_(chain),
     mutex_(mutex),
     stopped_(true),
     validator_(priority_dispatch, chain, settings, bitcoin_settings),
     downloader_subscriber_(std::make_shared<download_subscriber>(threads, NAME))
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_organizer(prioritized_mutex& mutex): "
+    << &mutex;
 }
 
 // Properties.
@@ -75,8 +80,8 @@ bool block_organizer::start()
 bool block_organizer::stop()
 {
     validator_.stop();
+    downloader_subscriber_->relay(error::service_stopped, null_hash, (size_t)0);
     downloader_subscriber_->stop();
-    downloader_subscriber_->invoke(error::service_stopped, {}, 0);
     stopped_ = true;
     return true;
 }
@@ -123,15 +128,34 @@ bool block_organizer::handle_check(const code& ec, const hash_digest& hash,
     if (ec)
         return false;
 
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_organizer::handle_check() with mutex_ of "
+    << &mutex_ << " calling lock_high_priority()";
+    
     // Critical Section
     ///////////////////////////////////////////////////////////////////////////
     mutex_.lock_high_priority();
 
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_organizer::handle_check() with mutex_ of "
+    << &mutex_ << " called lock_high_priority() successfully";
+    
     // If initial height is misaligned try again on next download.
     if (fast_chain_.top_valid_candidate_state()->height() != height - 1u)
     {
         //---------------------------------------------------------------------
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " block_organizer::handle_check() with mutex_ of "
+        << &mutex_ << " calling unlock_high_priority()";
         mutex_.unlock_high_priority();
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " block_organizer::handle_check() with mutex_ of "
+        << &mutex_ << " called unlock_high_priority() successfully";
         return true;
     }
 
@@ -197,7 +221,15 @@ bool block_organizer::handle_check(const code& ec, const hash_digest& hash,
             height);
     }
 
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_organizer::handle_check() with mutex_ of "
+    << &mutex_ << " calling unlock_high_priority()";
     mutex_.unlock_high_priority();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_organizer::handle_check() with mutex_ of "
+    << &mutex_ << " called unlock_high_priority() successfully";
     ///////////////////////////////////////////////////////////////////////////
 
     // A non-stop error result implies store corruption.

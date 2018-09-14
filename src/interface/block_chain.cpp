@@ -43,7 +43,7 @@ using namespace std::placeholders;
 block_chain::block_chain(threadpool& pool,
     const blockchain::settings& settings,
     const database::settings& database_settings,
-    const bc::settings& bitcoin_settings)
+     bc::settings& bitcoin_settings)
   : database_(database_settings),
     stopped_(true),
     fork_point_({ null_hash, 0 }),
@@ -268,18 +268,18 @@ void block_chain::prime_validation(const hash_digest& hash,
     block_organizer_.prime_validation(hash, height);
 }
 
-void block_chain::populate_header(const chain::header& header) const
+void block_chain::populate_header( chain::header& header) const
 {
     database_.blocks().get_header_metadata(header);
 }
 
-void block_chain::populate_block_transaction(const chain::transaction& tx,
+void block_chain::populate_block_transaction( chain::transaction& tx,
     uint32_t forks, size_t fork_height) const
 {
     database_.transactions().get_block_metadata(tx, forks, fork_height);
 }
 
-void block_chain::populate_pool_transaction(const chain::transaction& tx,
+void block_chain::populate_pool_transaction( chain::transaction& tx,
     uint32_t forks) const
 {
     database_.transactions().get_pool_metadata(tx, forks);
@@ -326,7 +326,7 @@ block_const_ptr block_chain::get_block(size_t height, bool witness,
 
     // Use non-const header copy to obtain move construction for txs.
     auto header = result.header();
-    return std::make_shared<const block>(std::move(header), std::move(txs));
+    return std::make_shared<block>(std::move(header), std::move(txs));
 }
 
 header_const_ptr block_chain::get_header(size_t height, bool candidate) const
@@ -338,7 +338,8 @@ header_const_ptr block_chain::get_header(size_t height, bool candidate) const
         return {};
 
     BITCOIN_ASSERT(result.height() == height);
-    return std::make_shared<const header>(result.header());
+    auto rheader = result.header();
+    return std::make_shared<header>(std::move(rheader));
 }
 
 // Writers
@@ -426,7 +427,7 @@ code block_chain::reorganize(const config::checkpoint& fork,
 
     code ec;
     auto fork_height = fork.height();
-    const auto outgoing = std::make_shared<header_const_ptr_list>();
+     auto outgoing = std::make_shared<header_const_ptr_list>();
 
     // This unmarks candidate txs and spent outputs (may have been validated).
     if ((ec = database_.reorganize(fork, incoming, outgoing)))
@@ -479,7 +480,7 @@ code block_chain::update(block_const_ptr block, size_t height)
     return error_code;
 }
 
-code block_chain::invalidate(const chain::header& header, const code& error)
+code block_chain::invalidate( chain::header& header, const code& error)
 {
     // Mark candidate header as invalid.
     return database_.invalidate(header, error);
@@ -488,7 +489,7 @@ code block_chain::invalidate(const chain::header& header, const code& error)
 // Mark candidate block and descendants as invalid and pop them.
 code block_chain::invalidate(block_const_ptr block, size_t block_height)
 {
-    const auto& header = block->header();
+     auto& header = block->header();
     BITCOIN_ASSERT(header.metadata.error);
 
     size_t top;
@@ -502,18 +503,18 @@ code block_chain::invalidate(block_const_ptr block, size_t block_height)
 
     code ec;
     const config::checkpoint fork{ fork_hash, fork_height };
-    const auto outgoing = std::make_shared<header_const_ptr_list>();
-    const auto incoming = std::make_shared<header_const_ptr_list>();
+     auto outgoing = std::make_shared<header_const_ptr_list>();
+     auto incoming = std::make_shared<header_const_ptr_list>();
 
     // Copy first invalid candidate header to outgoing.
-    outgoing->push_back(std::make_shared<const message::header>(header));
+    outgoing->push_back(std::make_shared<message::header>(header));
 
     // Copy all dependant invalid candidates to outgoing.
     for (auto height = block_height + 1u; height <= top; ++height)
         outgoing->push_back(get_header(height, true));
 
     // Mark all outgoing candidate blocks as invalid, in store and metadata.
-    for (const auto header: *outgoing)
+    for ( auto header: *outgoing)
         if ((ec = invalidate(*header, error::store_block_missing_parent)))
             return ec;
 
@@ -532,7 +533,7 @@ code block_chain::invalidate(block_const_ptr block, size_t block_height)
 code block_chain::candidate(block_const_ptr block)
 {
     code ec;
-    const auto& header = block->header();
+     auto& header = block->header();
     BITCOIN_ASSERT(!header.metadata.error);
 
     // Mark candidate block valid, txs and outputs spent by them as candidate.
@@ -558,7 +559,7 @@ code block_chain::reorganize(block_const_ptr_list_const_ptr branch_cache,
     if (branch_cache->empty())
         return error::operation_failed;
 
-    const auto top = branch_cache->back();
+     auto top = branch_cache->back();
     const auto top_state = top->header().metadata.state;
 
     if (!top_state)
@@ -567,13 +568,13 @@ code block_chain::reorganize(block_const_ptr_list_const_ptr branch_cache,
     code ec;
     chain::chain_state::ptr state;
     const auto fork = fork_point();
-    const auto outgoing = std::make_shared<block_const_ptr_list>();
-    const auto incoming = std::make_shared<block_const_ptr_list>();
+     auto outgoing = std::make_shared<block_const_ptr_list>();
+     auto incoming = std::make_shared<block_const_ptr_list>();
 
     // Get all missing incoming candidates with chain state (expensive reads).
     for (auto height = fork.height() + 1u; height < branch_height; ++height)
     {
-        const auto block = get_block(height, true, true);
+         auto block = get_block(height, true, true);
 
         // Query chain state for first block, promote for remaining blocks.
         state = state ?
@@ -585,7 +586,7 @@ code block_chain::reorganize(block_const_ptr_list_const_ptr branch_cache,
     }
 
     // Append all candidate pointers from the branch cache.
-    for (const auto block: *branch_cache)
+    for ( auto block: *branch_cache)
     {
         //// Clear chain state for reorganize and notify.
         ////block->header().metadata.state.reset();
@@ -799,14 +800,14 @@ bool block_chain::is_reorganizable() const
 // ----------------------------------------------------------------------------
 
 // For header index validator, call only from validate critical section.
-chain::chain_state::ptr block_chain::chain_state(const chain::header& header,
+chain::chain_state::ptr block_chain::chain_state( chain::header& header,
     size_t height) const
 {
     return chain_state_populator_.populate(header, height, true);
 }
 
 // Promote chain state from the given parent header.
-chain::chain_state::ptr block_chain::promote_state(const chain::header& header,
+chain::chain_state::ptr block_chain::promote_state( chain::header& header,
     chain::chain_state::ptr parent) const
 {
     if (!parent || parent->hash() != header.previous_block_hash())
@@ -860,13 +861,26 @@ bool block_chain::stop()
 {
     stopped_ = true;
 
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::stop() with validation_mutex_ (aka mutex_) of "
+    << &validation_mutex_ << " calling lock_high_priority()";
+
+    // this can't be done in the critical section or block_organizer finishes validation before stop
+    block_organizer_.stop();
+    
     // Critical Section
     ///////////////////////////////////////////////////////////////////////////
     validation_mutex_.lock_high_priority();
 
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::stop() with validation_mutex_ (aka mutex_) of "
+    << &validation_mutex_ << " called lock_high_priority() successfully";
+    
     // This cannot call organize or stop (lock safe).
     auto result =
-        block_organizer_.stop() &&
         header_organizer_.stop() &&
         transaction_organizer_.stop();
 
@@ -881,7 +895,17 @@ bool block_chain::stop()
     // The priority pool must not be stopped while organizing.
     priority_pool_.shutdown();
 
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::stop() with validation_mutex_ (aka mutex_) of "
+    << &validation_mutex_ << " calling unlock_high_priority()";
+    
     validation_mutex_.unlock_high_priority();
+
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::stop() with validation_mutex_ (aka mutex_) of "
+    << &validation_mutex_ << " called unlock_high_priority() successfully";
     ///////////////////////////////////////////////////////////////////////////
     return result;
 }
@@ -981,13 +1005,13 @@ void block_chain::fetch_block(size_t height, bool witness,
 
     // Use non-const header copy to obtain move construction for txs.
     auto header = result.header();
-    const auto message = std::make_shared<const block>(std::move(header),
+    const auto message = std::make_shared<block>(std::move(header),
         std::move(txs));
     handler(error::success, message, height);
 }
 
 void block_chain::fetch_block(const hash_digest& hash, bool witness,
-    block_fetch_handler handler) const
+    block_fetch_handler handler)
 {
     if (stopped())
     {
@@ -1023,7 +1047,7 @@ void block_chain::fetch_block(const hash_digest& hash, bool witness,
 
     // Use non-const header copy to obtain move construction for txs.
     auto header = result.header();
-    const auto message = std::make_shared<const block>(std::move(header),
+    const auto message = std::make_shared<block>(std::move(header),
         std::move(txs));
     handler(error::success, message, result.height());
 }
@@ -1046,12 +1070,13 @@ void block_chain::fetch_block_header(size_t height,
     }
 
     BITCOIN_ASSERT(result.height() == height);
-    const auto message = std::make_shared<header>(result.header());
+    auto rheader = result.header();
+    auto message = std::make_shared<header>(std::move(rheader));
     handler(error::success, message, height);
 }
 
 void block_chain::fetch_block_header(const hash_digest& hash,
-    block_header_fetch_handler handler) const
+    block_header_fetch_handler handler)
 {
     if (stopped())
     {
@@ -1067,12 +1092,13 @@ void block_chain::fetch_block_header(const hash_digest& hash,
         return;
     }
 
-    const auto message = std::make_shared<header>(result.header());
+    auto rheader = result.header();
+    auto message = std::make_shared<header>(std::move(rheader));
     handler(error::success, message, result.height());
 }
 
 void block_chain::fetch_merkle_block(size_t height,
-    merkle_block_fetch_handler handler) const
+    merkle_block_fetch_handler handler)
 {
     if (stopped())
     {
@@ -1097,13 +1123,14 @@ void block_chain::fetch_merkle_block(size_t height,
         return;
     }
 
-    const auto merkle = std::make_shared<merkle_block>(result.header(),
-        hashes.size(), hashes, data_chunk{});
+    auto rheader = result.header();
+    auto merkle = std::make_shared<merkle_block>(rheader,
+     hashes.size(), hashes, data_chunk{});
     handler(error::success, merkle, height);
 }
 
 void block_chain::fetch_merkle_block(const hash_digest& hash,
-    merkle_block_fetch_handler handler) const
+    merkle_block_fetch_handler handler) 
 {
     if (stopped())
     {
@@ -1127,7 +1154,8 @@ void block_chain::fetch_merkle_block(const hash_digest& hash,
         return;
     }
 
-    const auto merkle = std::make_shared<merkle_block>(result.header(),
+    auto rheader = result.header();
+    auto merkle = std::make_shared<merkle_block>(rheader,
         hashes.size(), hashes, data_chunk{});
     handler(error::success, merkle, result.height());
 }
@@ -1219,7 +1247,7 @@ void block_chain::fetch_transaction(const hash_digest& hash,
     }
 
     // TODO: tx state may not be publishable.
-    const auto tx = std::make_shared<const transaction>(
+     auto tx = std::make_shared<transaction>(
         result.transaction(witness));
     handler(error::success, tx, result.position(), result.height());
 }
@@ -1419,7 +1447,8 @@ void block_chain::fetch_locator_block_headers(get_headers_const_ptr locator,
             break;
         }
 
-        message->elements().push_back(result.header());
+        auto rheader = result.header();
+        message->elements().push_back(std::move(rheader));
     }
 
     handler(error::success, std::move(message));

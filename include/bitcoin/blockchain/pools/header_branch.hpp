@@ -34,7 +34,7 @@ class BCB_API header_branch
 {
 public:
     typedef std::shared_ptr<header_branch> ptr;
-    typedef std::shared_ptr<const header_branch> const_ptr;
+    typedef std::shared_ptr<header_branch> const_ptr;
 
     /// Establish a header_branch with the given parent height.
     header_branch(size_t height=max_size_t);

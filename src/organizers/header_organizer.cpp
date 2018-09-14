@@ -38,13 +38,18 @@ using namespace std::placeholders;
 
 header_organizer::header_organizer(prioritized_mutex& mutex,
     dispatcher& priority_dispatch, threadpool&, fast_chain& chain,
-    header_pool& pool, const bc::settings& bitcoin_settings)
+    header_pool& pool,  bc::settings& bitcoin_settings)
   : fast_chain_(chain),
     mutex_(mutex),
     stopped_(true),
     pool_(pool),
     validator_(priority_dispatch, chain, bitcoin_settings)
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " header_organizer(prioritized_mutex& mutex): "
+    << &mutex;
 }
 
 // Properties.
@@ -80,6 +85,8 @@ bool header_organizer::stop()
 void header_organizer::organize(header_const_ptr header,
     result_handler handler)
 {
+    const auto this_id = boost::this_thread::get_id();
+
     code error_code;
 
     // Checks that are independent of chain state.
@@ -93,10 +100,20 @@ void header_organizer::organize(header_const_ptr header,
         std::bind(&header_organizer::handle_complete,
             this, _1, handler);
 
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " header_organizer::organize() with mutex_ of "
+    << &mutex_ << " calling lock_high_priority()";
+
     // Critical Section
     ///////////////////////////////////////////////////////////////////////////
     mutex_.lock_high_priority();
 
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " header_organizer::organize() with mutex_ of "
+    << &mutex_ << " called lock_high_priority() successfully";
+    
     // The pool is safe for filtering only, so protect by critical section.
     // This sets height and presumes the fork point is an indexed header.
     const auto branch = pool_.get_branch(header);
@@ -105,6 +122,10 @@ void header_organizer::organize(header_const_ptr header,
     // The header is already memory pooled (nothing to do).
     if (branch->empty())
     {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " header_organizer::organize() with mutex_ of "
+        << &mutex_ << " calling complete(error::duplicate_block)";
         complete(error::duplicate_block);
         return;
     }
@@ -120,7 +141,16 @@ void header_organizer::organize(header_const_ptr header,
 // private
 void header_organizer::handle_complete(const code& ec, result_handler handler)
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " header_organizer::handle_complete() with mutex_ of "
+    << &mutex_ << " calling unlock_high_priority()";
     mutex_.unlock_high_priority();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " header_organizer::handle_complete() with mutex_ of "
+    << &mutex_ << " called unlock_high_priority() successfully";
     ///////////////////////////////////////////////////////////////////////////
 
     // Invoke caller handler outside of critical section.
