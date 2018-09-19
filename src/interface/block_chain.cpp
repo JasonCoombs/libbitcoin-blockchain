@@ -68,7 +68,7 @@ block_chain::block_chain(threadpool& pool,
     block_organizer_(validation_mutex_, priority_, pool, *this, settings,
         bitcoin_settings),
     header_organizer_(validation_mutex_, priority_, pool, *this, header_pool_,
-        bitcoin_settings),
+        settings.scrypt_proof_of_work, bitcoin_settings),
     transaction_organizer_(validation_mutex_, priority_, pool, *this, transaction_pool_, settings),
 
     // Subscriber thread pools are only used for unsubscribe, otherwise invoke.
@@ -574,6 +574,8 @@ code block_chain::reorganize(block_const_ptr_list_const_ptr branch_cache,
     // Get all missing incoming candidates with chain state (expensive reads).
     for (auto height = fork.height() + 1u; height < branch_height; ++height)
     {
+        LOG_DEBUG(LOG_BLOCKCHAIN)
+            << "Get preceding block #" << height;
          auto block = get_block(height, true, true);
 
         // Query chain state for first block, promote for remaining blocks.
@@ -884,6 +886,8 @@ bool block_chain::stop()
         header_organizer_.stop() &&
         transaction_organizer_.stop();
 
+    // Clean up subscriptions and threadpool now that work is coalesced.
+
     block_subscriber_->stop();
     header_subscriber_->stop();
     transaction_subscriber_->stop();
@@ -892,7 +896,7 @@ bool block_chain::stop()
     header_subscriber_->invoke(error::service_stopped, 0, {}, {});
     transaction_subscriber_->invoke(error::service_stopped, {});
 
-    // The priority pool must not be stopped while organizing.
+    // Stop the threadpool keep-alive allowing threads to terminate.
     priority_pool_.shutdown();
 
     LOG_VERBOSE(LOG_BLOCKCHAIN)
@@ -1752,7 +1756,7 @@ void block_chain::organize(header_const_ptr header, result_handler handler)
 void block_chain::organize(transaction_const_ptr tx, result_handler handler)
 {
     // The handler must not call organize (lock safety).
-    transaction_organizer_.organize(tx, handler, bitcoin_settings_.max_money);
+    transaction_organizer_.organize(tx, handler, bitcoin_settings_.max_money());
 }
 
 code block_chain::organize(block_const_ptr block, size_t height)

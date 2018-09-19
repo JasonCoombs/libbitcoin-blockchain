@@ -35,7 +35,7 @@ public:
     typedef handle0 result_handler;
 
     validate_header(dispatcher& dispatch, const fast_chain& chain,
-         bc::settings& bitcoin_settings);
+        const bool scrypt, bc::settings& bitcoin_settings);
 
     void start();
     void stop();
@@ -53,7 +53,8 @@ private:
     // These are thread safe.
     std::atomic<bool> stopped_;
     populate_header header_populator_;
-     bc::settings& bitcoin_settings_;
+    const bool scrypt_;
+    bc::settings& bitcoin_settings_;
 };
 
 } // namespace blockchain
