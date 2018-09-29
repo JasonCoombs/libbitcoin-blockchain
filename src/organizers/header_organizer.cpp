@@ -89,9 +89,19 @@ void header_organizer::organize(header_const_ptr header,
 
     code error_code;
 
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " header_organizer::organize() with mutex_ of "
+    << &mutex_ << " calling validator_.check()";
+
     // Checks that are independent of chain state.
     if ((error_code = validator_.check(header)))
     {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " error header_organizer::organize() with mutex_ of "
+        << &mutex_ << " error_code = " << error_code << " " << error_code.message();
+
         handler(error_code);
         return;
     }
@@ -134,6 +144,11 @@ void header_organizer::organize(header_const_ptr header,
         std::bind(&header_organizer::handle_accept,
             this, _1, branch, complete);
 
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " header_organizer::organize() with mutex_ of "
+    << &mutex_ << " calling validator_.accept()";
+    
     // Checks that are dependent on chain state.
     validator_.accept(branch, accept_handler);
 }
@@ -164,6 +179,8 @@ void header_organizer::handle_complete(const code& ec, result_handler handler)
 void header_organizer::handle_accept(const code& ec, header_branch::ptr branch,
     result_handler handler)
 {
+    const auto this_id = boost::this_thread::get_id();
+
     // The header may exist in the store in any not-invalid state.
     // An invalid state causes an error result and block rejection.
 
@@ -175,6 +192,15 @@ void header_organizer::handle_accept(const code& ec, header_branch::ptr branch,
 
     if (ec)
     {
+        // TODO: too many duplicate blocks! find out why and fix this problem.
+        if (ec.value() != 51)
+        {
+        LOG_FATAL(LOG_BLOCKCHAIN)
+        << this_id
+        << " error header_organizer::handle_accept() "
+        << " error_code = " << ec << " " << ec.message();
+        }
+        
         handler(ec);
         return;
     }
@@ -182,10 +208,16 @@ void header_organizer::handle_accept(const code& ec, header_branch::ptr branch,
     // The top block is valid even if the branch has insufficient work.
     const auto top = branch->top();
     const auto work = branch->work();
+    auto branch_height = branch->height();
+
     uint256_t required_work;
 
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " header_organizer::handle_accept() calling get_work() height: " << branch_height;
+    
     // This stops before the height or at the work level, which ever is first.
-    if (!fast_chain_.get_work(required_work, work, branch->height(), true))
+    if (!fast_chain_.get_work(required_work, work, branch_height, true))
     {
         handler(error::operation_failed);
         return;
@@ -194,20 +226,29 @@ void header_organizer::handle_accept(const code& ec, header_branch::ptr branch,
     // Consensus.
     if (work <= required_work)
     {
-        pool_.add(top, branch->top_height());
+        auto branch_top_height = branch->top_height();
+
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " error header_organizer::handle_accept() error::insufficient_work top height: " << branch_top_height;
+
+        pool_.add(top, branch_top_height);
         handler(error::insufficient_work);
         return;
     }
 
     //#########################################################################
-    const auto error_code = fast_chain_.reorganize(branch->fork_point(),
-        branch->headers());
+    auto fork_point = branch->fork_point();
+    auto branch_headers = branch->headers();
+    const auto error_code = fast_chain_.reorganize(fork_point,
+        branch_headers);
     //#########################################################################
 
     if (error_code)
     {
         LOG_FATAL(LOG_BLOCKCHAIN)
-            << "Failure writing header to store, is now corrupted: "
+            << this_id
+            << " Failure writing header to store, is now corrupted: "
             << error_code.message();
 
         handler(error_code);

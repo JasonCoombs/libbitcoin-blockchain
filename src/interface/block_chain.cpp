@@ -76,6 +76,11 @@ block_chain::block_chain(threadpool& pool,
     header_subscriber_(std::make_shared<header_subscriber>(pool, NAME "_header")),
     transaction_subscriber_(std::make_shared<transaction_subscriber>(pool, NAME "_tx"))
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::block_chain() called.";
 }
 
 // ============================================================================
@@ -88,13 +93,26 @@ block_chain::block_chain(threadpool& pool,
 bool block_chain::get_top(chain::header& out_header, size_t& out_height,
     bool candidate) const
 {
-    return get_top_height(out_height, candidate) &&
-        get_header(out_header, out_height, candidate);
+    const auto this_id = boost::this_thread::get_id();
+    auto top_height = get_top_height(out_height, candidate);
+    auto header = get_header(out_header, out_height, candidate);
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::get_top() 1 called. out_height: " << out_height;
+    
+    return top_height && header;
 }
 
 bool block_chain::get_top(config::checkpoint& out_checkpoint,
     bool candidate) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::get_top() 2 called. out_checkpoint: " << &out_checkpoint;
+
     size_t height;
     hash_digest hash;
 
@@ -108,12 +126,25 @@ bool block_chain::get_top(config::checkpoint& out_checkpoint,
 
 bool block_chain::get_top_height(size_t& out_height, bool candidate) const
 {
-    return database_.blocks().top(out_height, candidate);
+    const auto this_id = boost::this_thread::get_id();
+    auto retval = database_.blocks().top(out_height, candidate);
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::get_top_height() called. out_height: " << out_height;
+
+    return retval;
 }
 
 bool block_chain::get_header(chain::header& out_header, size_t height,
     bool candidate) const
 {
+    const auto this_id = boost::this_thread::get_id();
+
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::get_header() 1 called. height: " << height;
+
     auto result = database_.blocks().get(height, candidate);
 
     if (!result)
@@ -127,10 +158,22 @@ bool block_chain::get_header(chain::header& out_header, size_t height,
 bool block_chain::get_header(chain::header& out_header, size_t& out_height,
     const hash_digest& block_hash, bool candidate) const
 {
+    const auto this_id = boost::this_thread::get_id();
+
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::get_header() 2 database_ get hash: " << bc::encode_hash(block_hash);
+
     auto result = database_.blocks().get(block_hash);
 
     if (!result)
+    {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " block_chain::get_header() 2 database_ get failed, returning false.";
+
         return false;
+    }
 
     const auto height = result.height();
 
@@ -140,8 +183,17 @@ bool block_chain::get_header(chain::header& out_header, size_t& out_height,
     {
         out_header = result.header();
         out_height = height;
+
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " block_chain::get_header() 2 called. out_height: " << out_height;
+
         return true;
     }
+
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::get_header() 2 failed, returning false. height: " << height;
 
     return false;
 }
@@ -149,11 +201,23 @@ bool block_chain::get_header(chain::header& out_header, size_t& out_height,
 bool block_chain::get_block_hash(hash_digest& out_hash, size_t height,
     bool candidate) const
 {
+    const auto this_id = boost::this_thread::get_id();
+
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::get_block_hash() called. height: " << height;
+
     const auto result = database_.blocks().get(height, candidate);
 
     if (!result)
-        return false;
+    {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " block_chain::get_block_hash() database_ get failed, returning false.";
 
+        return false;
+    }
+    
     out_hash = result.hash();
     return true;
 }
@@ -161,11 +225,23 @@ bool block_chain::get_block_hash(hash_digest& out_hash, size_t height,
 bool block_chain::get_block_error(code& out_error,
     const hash_digest& block_hash) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::get_block_error() called.";
+
     auto result = database_.blocks().get(block_hash);
 
     if (!result)
-        return false;
+    {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " block_chain::get_header() 2 database_ get failed, returning false.";
 
+        return false;
+    }
+    
     out_error = result.error();
     return true;
 }
@@ -173,18 +249,37 @@ bool block_chain::get_block_error(code& out_error,
 bool block_chain::get_bits(uint32_t& out_bits, size_t height,
     bool candidate) const
 {
+    const auto this_id = boost::this_thread::get_id();
+
     auto result = database_.blocks().get(height, candidate);
 
     if (!result)
+    {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " block_chain::get_bits() database_ get failed, returning false.";
+
         return false;
+    }
 
     out_bits = result.bits();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::get_bits() called. height: " << height;
+
     return true;
 }
 
 bool block_chain::get_timestamp(uint32_t& out_timestamp, size_t height,
     bool candidate) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::get_timestamp() called. height: " << height;
+
     auto result = database_.blocks().get(height, candidate);
 
     if (!result)
@@ -197,6 +292,12 @@ bool block_chain::get_timestamp(uint32_t& out_timestamp, size_t height,
 bool block_chain::get_version(uint32_t& out_version, size_t height,
     bool candidate) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::get_version() called. height: " << height;
+
     auto result = database_.blocks().get(height, candidate);
 
     if (!result)
@@ -209,6 +310,12 @@ bool block_chain::get_version(uint32_t& out_version, size_t height,
 bool block_chain::get_work(uint256_t& out_work, const uint256_t& overcome,
     size_t above_height, bool candidate) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::get_work() called. above_height: " << above_height;
+
     size_t top;
     out_work = 0;
 
@@ -304,6 +411,12 @@ uint8_t block_chain::get_block_state(const hash_digest& block_hash) const
 block_const_ptr block_chain::get_block(size_t height, bool witness,
     bool candidate) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::get_block() called. height: " << height;
+
     const auto cached = last_block_.load();
 
     // Try the cached block first.
@@ -348,6 +461,8 @@ header_const_ptr block_chain::get_header(size_t height, bool candidate) const
 // private
 void block_chain::index_block(block_const_ptr block)
 {
+    const auto this_id = boost::this_thread::get_id();
+
     if (!index_addresses_)
         return;
 
@@ -355,7 +470,8 @@ void block_chain::index_block(block_const_ptr block)
     if ((ec = database_.index(*block)))
     {
         LOG_FATAL(LOG_BLOCKCHAIN)
-            << "Failure in block payment indexing, store is now corrupt: "
+            << this_id
+            << " Failure in block payment indexing, store is now corrupt: "
             << ec.message();
 
         // In the case of a store failure the server stops processing.
@@ -366,6 +482,8 @@ void block_chain::index_block(block_const_ptr block)
 // private
 void block_chain::index_transaction(transaction_const_ptr tx)
 {
+    const auto this_id = boost::this_thread::get_id();
+
     if (!index_addresses_ || tx->metadata.existed)
         return;
 
@@ -373,6 +491,7 @@ void block_chain::index_transaction(transaction_const_ptr tx)
     if ((ec = database_.index(*tx)))
     {
         LOG_FATAL(LOG_BLOCKCHAIN)
+            << this_id
             << "Failure in transaction payment indexing, store is now corrupt: "
             << ec.message();
 
@@ -383,6 +502,12 @@ void block_chain::index_transaction(transaction_const_ptr tx)
 
 code block_chain::store(transaction_const_ptr tx)
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::store() called.";
+
     const auto state = tx->metadata.state;
 
     if (!state)
@@ -411,6 +536,12 @@ code block_chain::store(transaction_const_ptr tx)
 code block_chain::reorganize(const config::checkpoint& fork,
     header_const_ptr_list_const_ptr incoming)
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::reorganize() 1 called.";
+
     if (incoming->empty())
         return error::operation_failed;
 
@@ -461,6 +592,12 @@ code block_chain::reorganize(const config::checkpoint& fork,
 
 code block_chain::update(block_const_ptr block, size_t height)
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::update() called. height: " << height;
+
     code error_code;
     const auto& metadata = block->header().metadata;
 
@@ -489,7 +626,7 @@ code block_chain::invalidate( chain::header& header, const code& error)
 // Mark candidate block and descendants as invalid and pop them.
 code block_chain::invalidate(block_const_ptr block, size_t block_height)
 {
-     auto& header = block->header();
+    auto& header = block->header();
     BITCOIN_ASSERT(header.metadata.error);
 
     size_t top;
@@ -556,6 +693,12 @@ code block_chain::candidate(block_const_ptr block)
 code block_chain::reorganize(block_const_ptr_list_const_ptr branch_cache,
     size_t branch_height)
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::reorganize() 2 called. branch_height: " << branch_height;
+
     if (branch_cache->empty())
         return error::operation_failed;
 
@@ -839,24 +982,89 @@ chain::chain_state::ptr block_chain::promote_state(
 
 bool block_chain::start()
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::start() called.";
+
     stopped_ = false;
 
     if (!database_.open())
+    {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " block_chain::start() failed to open database_";
+
         return false;
-
+    }
+    else
+    {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " block_chain::start() successfully opened database_";
+    }
+    
     block_subscriber_->start();
-    header_subscriber_->start();
-    transaction_subscriber_->start();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::start() called block_subscriber_->start()";
 
-    return set_fork_point()
-        && set_top_candidate_state()
-        && set_top_valid_candidate_state()
-        && set_next_confirmed_state()
-        && set_candidate_work()
-        && set_confirmed_work()
-        && block_organizer_.start()
-        && header_organizer_.start()
-        && transaction_organizer_.start();
+    header_subscriber_->start();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::start() called header_subscriber_->start()";
+
+    transaction_subscriber_->start();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::start() called transaction_subscriber_->start()";
+    
+    bool retval = set_fork_point();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::start() called set_fork_point()";
+
+    retval = retval && set_top_candidate_state();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::start() called set_top_candidate_state()";
+
+    retval = retval && set_top_valid_candidate_state();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::start() called set_top_valid_candidate_state()";
+
+    retval = retval && set_next_confirmed_state();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::start() called set_next_confirmed_state()";
+
+    retval = retval && set_candidate_work();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::start() called set_candidate_work()";
+
+    retval = retval && set_confirmed_work();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::start() called set_confirmed_work()";
+
+    retval = retval && block_organizer_.start();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::start() called block_organizer_.start()";
+
+    retval = retval && header_organizer_.start();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::start() called header_organizer_.start()";
+
+    retval = retval && transaction_organizer_.start();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::start() called transaction_organizer_.start()";
+
+    return retval;
 }
 
 bool block_chain::stop()
@@ -935,6 +1143,12 @@ block_chain::~block_chain()
 bool block_chain::get_transactions(transaction::list& out_transactions,
     const database::block_result& result, bool witness) const
 {
+    const auto this_id = boost::this_thread::get_id();
+
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::get_transactions() called.";
+
     out_transactions.reserve(result.transaction_count());
     const auto& tx_store = database_.transactions();
 
@@ -974,6 +1188,12 @@ bool block_chain::get_transaction_hashes(hash_list& out_hashes,
 void block_chain::fetch_block(size_t height, bool witness,
     block_fetch_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::fetch_block() 1 called.";
+
     if (stopped())
     {
         handler(error::service_stopped, nullptr, 0);
@@ -1017,6 +1237,12 @@ void block_chain::fetch_block(size_t height, bool witness,
 void block_chain::fetch_block(const hash_digest& hash, bool witness,
     block_fetch_handler handler)
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::fetch_block() 2 called.";
+
     if (stopped())
     {
         handler(error::service_stopped, nullptr, 0);
@@ -1059,6 +1285,12 @@ void block_chain::fetch_block(const hash_digest& hash, bool witness,
 void block_chain::fetch_block_header(size_t height,
     block_header_fetch_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::fetch_block_header() 1 called.";
+
     if (stopped())
     {
         handler(error::service_stopped, nullptr, 0);
@@ -1082,6 +1314,12 @@ void block_chain::fetch_block_header(size_t height,
 void block_chain::fetch_block_header(const hash_digest& hash,
     block_header_fetch_handler handler)
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::fetch_block_header() 2 called.";
+
     if (stopped())
     {
         handler(error::service_stopped, nullptr, 0);
@@ -1104,6 +1342,12 @@ void block_chain::fetch_block_header(const hash_digest& hash,
 void block_chain::fetch_merkle_block(size_t height,
     merkle_block_fetch_handler handler)
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::fetch_merkle_block() 1 called.";
+
     if (stopped())
     {
         handler(error::service_stopped, nullptr, 0);
@@ -1136,6 +1380,12 @@ void block_chain::fetch_merkle_block(size_t height,
 void block_chain::fetch_merkle_block(const hash_digest& hash,
     merkle_block_fetch_handler handler) 
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::fetch_merkle_block() 2 called.";
+
     if (stopped())
     {
         handler(error::service_stopped, nullptr, 0);
@@ -1181,6 +1431,12 @@ void block_chain::fetch_compact_block(const hash_digest& ,
 void block_chain::fetch_block_height(const hash_digest& hash,
     block_height_fetch_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::fetch_block_height() called.";
+
     if (stopped())
     {
         handler(error::service_stopped, {});
@@ -1200,6 +1456,12 @@ void block_chain::fetch_block_height(const hash_digest& hash,
 
 void block_chain::fetch_last_height(last_height_fetch_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::fetch_last_height() called.";
+
     if (stopped())
     {
         handler(error::service_stopped, {});
@@ -1221,6 +1483,12 @@ void block_chain::fetch_transaction(const hash_digest& hash,
     bool require_confirmed, bool witness,
     transaction_fetch_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::fetch_transaction() called.";
+
     if (stopped())
     {
         handler(error::service_stopped, nullptr, 0, 0);
@@ -1260,6 +1528,12 @@ void block_chain::fetch_transaction(const hash_digest& hash,
 void block_chain::fetch_transaction_position(const hash_digest& hash,
     bool require_confirmed, transaction_index_fetch_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::fetch_transaction_position() called.";
+
     if (stopped())
     {
         handler(error::service_stopped, 0, 0);
@@ -1297,6 +1571,12 @@ void block_chain::fetch_locator_block_hashes(get_blocks_const_ptr locator,
     const hash_digest& threshold, size_t limit,
     inventory_fetch_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::fetch_locator_block_hashes() called.";
+
     if (stopped())
     {
         handler(error::service_stopped, nullptr);
@@ -1380,6 +1660,12 @@ void block_chain::fetch_locator_block_headers(get_headers_const_ptr locator,
     const hash_digest& threshold, size_t limit,
     locator_block_headers_fetch_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::fetch_locator_block_headers() called.";
+
     if (stopped())
     {
         handler(error::service_stopped, nullptr);
@@ -1497,6 +1783,12 @@ void block_chain::fetch_locator_block_headers(get_headers_const_ptr locator,
 void block_chain::fetch_header_locator(const block::indexes& heights,
     header_locator_fetch_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::fetch_header_locator() called.";
+
     if (stopped())
     {
         handler(error::service_stopped, nullptr);
@@ -1557,6 +1849,12 @@ void block_chain::fetch_spend(const chain::output_point& ,
 void block_chain::fetch_history(const short_hash& address_hash, size_t limit,
     size_t from_height, history_fetch_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::fetch_history() called.";
+
     if (stopped())
     {
         handler(error::service_stopped, {});
@@ -1629,6 +1927,12 @@ void block_chain::fetch_mempool(size_t count_limit, uint64_t minimum_fee,
 void block_chain::filter_blocks(get_data_ptr message,
     result_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::filter_blocks() called.";
+
     if (stopped())
     {
         handler(error::service_stopped);
@@ -1660,6 +1964,12 @@ void block_chain::filter_blocks(get_data_ptr message,
 void block_chain::filter_transactions(get_data_ptr message,
     result_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_chain::filter_transactions() called.";
+
     if (stopped())
     {
         handler(error::service_stopped);

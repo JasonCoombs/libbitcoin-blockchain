@@ -182,12 +182,12 @@ void transaction_pool::remove_transactions(transaction_const_ptr_list& txs)
             continue;
 
         auto children = member->first->children().left;
-        auto remove = (children.size() == input_it.second.size());
+        bool remove = (children.size() == input_it.second.size());
 
         for (auto index_it : input_it.second)
         {
             auto index_child = children.find(index_it.first);
-            remove &= (index_child != children.end());
+            remove = remove && (index_child != children.end());
             if (index_child != children.end())
             {
                 if (anchorizer.within_bounds(index_child->second->hash()))

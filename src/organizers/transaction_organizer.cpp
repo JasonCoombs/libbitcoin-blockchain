@@ -89,11 +89,18 @@ bool transaction_organizer::stop()
 void transaction_organizer::organize(transaction_const_ptr tx,
     result_handler handler, uint64_t max_money)
 {
+    const auto this_id = boost::this_thread::get_id();
+
     code error_code;
 
     // Checks that are independent of chain state.
     if ((error_code = validator_.check(tx, max_money)))
     {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " error transaction_organizer::organize() with mutex_ of "
+        << &mutex_ << " error_code = " << error_code << " " << error_code.message();
+
         handler(error_code);
         return;
     }

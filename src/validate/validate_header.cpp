@@ -70,9 +70,18 @@ void validate_header::stop()
 
 code validate_header::check(header_const_ptr header) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " validate_header::check() calling header->check()";
+    
     // Run context free checks, even if under checkpoint or milestone.
     return header->check(bitcoin_settings_.timestamp_limit_seconds,
         bitcoin_settings_.proof_of_work_limit, scrypt_);
+
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " validate_header::check() called header->check() successfully";
 }
 
 // Accept sequence.
@@ -91,31 +100,79 @@ void validate_header::accept(header_branch::ptr branch,
 void validate_header::handle_populated(const code& ec,
     header_branch::ptr branch, result_handler handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " validate_header::handle_populated() branch: " << branch;
+
     if (stopped())
     {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " validate_header::handle_populated() stopped. calling handler(error::service_stopped)";
+
         handler(error::service_stopped);
         return;
     }
 
     if (ec)
     {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " validate_header::handle_populated() error: " << ec << " " << ec.message();
+
         handler(ec);
         return;
     }
 
-    const auto& header = *branch->top();
-
-    // Skip validation if full block was validated (is valid at this point).
-    if (header.metadata.validated)
+    if (branch)
     {
-        handler(error::success);
-        return;
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " validate_header::handle_populated() calling branch->top()";
+
+        // this may have been causing a runtime crash upon return of nullptr; was: *branch->top()
+        const header_const_ptr header = branch->top();
+
+        if(header != nullptr)
+        {
+            LOG_VERBOSE(LOG_BLOCKCHAIN)
+            << this_id
+            << " validate_header::handle_populated() header: " << header;
+            
+            // Skip validation if full block was validated (is valid at this point).
+            if (header->metadata.validated)
+            {
+                LOG_VERBOSE(LOG_BLOCKCHAIN)
+                << this_id
+                << " validate_header::handle_populated() header.metadata.validated = true " << header;
+                
+                handler(error::success);
+                return;
+            }
+            
+            BITCOIN_ASSERT(header->metadata.state);
+            
+            LOG_VERBOSE(LOG_BLOCKCHAIN)
+            << this_id
+            << " validate_header::handle_populated() calling handler(header->accept())";
+            
+            // Run contextual header checks.
+            handler(header->accept());
+        }
+        else
+        {
+            LOG_VERBOSE(LOG_BLOCKCHAIN)
+            << this_id
+            << " validate_header::handle_populated() header is nullptr after branch->top() call.";
+        }
     }
-
-    BITCOIN_ASSERT(header.metadata.state);
-
-    // Run contextual header checks.
-    handler(header.accept());
+    else
+    {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " validate_header::handle_populated() branch is null.";
+    }
 }
 
 } // namespace blockchain

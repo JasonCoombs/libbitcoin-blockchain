@@ -68,7 +68,18 @@ header_const_ptr header_branch::top_parent() const
 
 header_const_ptr header_branch::top() const
 {
-    return empty() ? nullptr : headers_->back();
+    const auto this_id = boost::this_thread::get_id();
+    
+    if (empty())
+    {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " header_branch::top() is empty() so returning nullptr";
+
+        return (header_const_ptr)nullptr;
+    }
+    else
+        return (header_const_ptr)headers_->back();
 }
 
 size_t header_branch::top_height() const

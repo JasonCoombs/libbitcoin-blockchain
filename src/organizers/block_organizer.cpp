@@ -91,6 +91,8 @@ bool block_organizer::stop()
 
 code block_organizer::organize(block_const_ptr block, size_t height)
 {
+    const auto this_id = boost::this_thread::get_id();
+    
     // Checks that are independent of chain state (header, block, txs).
     validator_.check(block, height);
 
@@ -99,6 +101,11 @@ code block_organizer::organize(block_const_ptr block, size_t height)
     //#########################################################################
     const auto error_code = fast_chain_.update(block, height);
     //#########################################################################
+
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " block_organizer::organize() error_code: "
+    << error_code;
 
     // TODO: cache block as last downloaded (for fast top validation).
     // Queue download notification to invoke validation on downloader thread.
@@ -173,7 +180,8 @@ bool block_organizer::handle_check(const code& ec, const hash_digest& hash,
         auto block = fast_chain_.get_block(height, true, true);
 
         LOG_DEBUG(LOG_BLOCKCHAIN)
-            << "Got next block #" << height;
+            << this_id
+            << " Got next block #" << height;
 
         // If hash is misaligned we must be looking at an expired notification.
         if (!block || fast_chain_.top_valid_candidate_state()->hash() !=
@@ -208,7 +216,8 @@ bool block_organizer::handle_check(const code& ec, const hash_digest& hash,
         }
 
         LOG_DEBUG(LOG_BLOCKCHAIN)
-            << "Validated block #" << height << " ["
+            << this_id
+            << " Validated block #" << height << " ["
             << encode_hash(block->hash()) << "]";
 
         if (fast_chain_.is_reorganizable())
@@ -222,7 +231,8 @@ bool block_organizer::handle_check(const code& ec, const hash_digest& hash,
                 break;
 
             LOG_INFO(LOG_BLOCKCHAIN)
-                << "Organized blocks [" << branch_height << "-"
+                << this_id
+                << " Organized blocks [" << branch_height << "-"
                 << branch_height + branch_cache->size() - 1u << "]";
 
             // Reset the branch for next reorganization.
@@ -250,7 +260,8 @@ bool block_organizer::handle_check(const code& ec, const hash_digest& hash,
     if (error_code && error_code != error::service_stopped)
     {
         LOG_FATAL(LOG_BLOCKCHAIN)
-            << "Failure in block organization, store is now corrupt: "
+            << this_id
+            << " Failure in block organization, store is now corrupt: "
             << error_code.message();
     }
 

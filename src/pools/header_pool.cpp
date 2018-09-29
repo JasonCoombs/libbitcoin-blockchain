@@ -260,15 +260,31 @@ size_t header_pool::height(const hash_digest& hash) const
 
 header_branch::ptr header_pool::get_branch(header_const_ptr header) const
 {
+    const auto this_id = boost::this_thread::get_id();
+
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " header_pool::get_branch() calling make_shared<header_branch>()";
+    
     const auto trace = std::make_shared<header_branch>();
     auto root = header;
 
     // Empty list indicates duplicate.
     if (exists(header))
-        return trace;
+    {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " header_pool::get_branch() exists(header) DUPLICATE DETECTED!";
 
+        return trace;
+    }
+    
     while (header)
     {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " header_pool::get_branch() while(header) loop: header = " << header;
+
         trace->push(header);
         root = header;
         header = parent(header);
@@ -277,7 +293,26 @@ header_branch::ptr header_pool::get_branch(header_const_ptr header) const
     // A preexisting root header must have a non-zero height.
     // This precludes the need to search for the fork point for previous item.
     if (trace->size() > 1u)
-        trace->set_height(height(root->hash()) - 1u);
+    {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " header_pool::get_branch() trace->size() > 1u";
+
+        auto autohashdebug = root->hash();
+        auto autoheightdebug = height(autohashdebug);
+
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " root->hash() = " << encode_hash(autohashdebug) << " and height = " << autoheightdebug;
+
+        trace->set_height(autoheightdebug - 1u);
+    }
+    else
+    {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " header_pool::get_branch() trace->size() <= 1u";
+    }
 
     return trace;
 }

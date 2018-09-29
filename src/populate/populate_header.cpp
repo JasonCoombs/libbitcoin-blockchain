@@ -38,29 +38,84 @@ populate_header::populate_header(dispatcher& dispatch, const fast_chain& chain)
 void populate_header::populate(header_branch::ptr branch,
     result_handler&& handler) const
 {
+    const auto this_id = boost::this_thread::get_id();
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " populate_header::populate() calling set_branch_state()";
+
     // The header could not be connected to the header index.
     if (!set_branch_state(branch))
     {
+        LOG_VERBOSE(LOG_BLOCKCHAIN)
+        << this_id
+        << " populate_header::populate() calling handler(error::orphan_block)";
+
         handler(error::orphan_block);
         return;
     }
 
-     auto& header = *branch->top();
-    fast_chain_.populate_header(header);
+    LOG_VERBOSE(LOG_BLOCKCHAIN)
+    << this_id
+    << " populate_header::populate() calling branch->top() / fast_chain_.populate_header() branch: "
+    << &branch;
 
-    // TODO: ensure there is no need to set header state or index here.
-    if (header.metadata.exists)
+    if (branch)
     {
-        handler(error::duplicate_block);
-        return;
+        // this may have been causing a runtime crash upon return of nullptr; was: *branch->top()
+        const header_const_ptr header = branch->top();
+
+        if (header != nullptr)
+        {
+            LOG_VERBOSE(LOG_BLOCKCHAIN)
+            << this_id
+            << " branch->top() header: "
+            << header;
+            
+            fast_chain_.populate_header(*header);
+            
+            // TODO: ensure there is no need to set header state or index here.
+            if (header->metadata.exists)
+            {
+                LOG_VERBOSE(LOG_BLOCKCHAIN)
+                << this_id
+                << " populate_header::populate() calling handler(error::duplicate_block)";
+                
+                handler(error::duplicate_block);
+                return;
+            }
+            
+            if (header->metadata.state)
+            {
+                LOG_VERBOSE(LOG_BLOCKCHAIN)
+                << this_id
+                << " populate_header::populate() calling header.metadata.state->median_time_past()";
+
+                // HACK: allows header collection to carry median_time_past to store.
+                header->metadata.median_time_past = header->metadata.state->
+                median_time_past();
+            }
+            else
+            {
+                LOG_VERBOSE(LOG_BLOCKCHAIN)
+                << this_id
+                << " error populate_header::populate() header->metadata.state is null";
+            }
+
+            LOG_VERBOSE(LOG_BLOCKCHAIN)
+            << this_id
+            << " populate_header::populate() calling handler(header.metadata.error) "
+            << header->metadata.error << " " << header->metadata.error.message();
+            
+            // If there is an existing full block validation error return it.
+            handler(header->metadata.error);
+        }
+        else
+        {
+            LOG_VERBOSE(LOG_BLOCKCHAIN)
+            << this_id
+            << " populate_header::populate() header is nullptr after branch->top() call.";
+        }
     }
-
-    // HACK: allows header collection to carry median_time_past to store.
-    header.metadata.median_time_past = header.metadata.state->
-        median_time_past();
-
-    // If there is an existing full block validation error return it.
-    handler(header.metadata.error);
 }
 
 // private
